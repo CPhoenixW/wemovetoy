@@ -1,0 +1,23 @@
+# Environment and secrets
+.env
+.env.local
+backend/.env
+backend/.env.local
+
+# Node.js
+node_modules/
+backend/node_modules/
+backend/dist/
+backend/coverage/
+backend/.nestjs/
+*.tsbuildinfo
+
+# Local database and logs
+*.log
+*.sqlite
+*.sqlite-journal
+
+# Editor and operating system metadata
+.DS_Store
+.idea/
+.vscode/
