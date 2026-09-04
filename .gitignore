@@ -10,6 +10,9 @@ backend/node_modules/
 backend/dist/
 backend/coverage/
 backend/.nestjs/
+frontend/node_modules/
+frontend/.next/
+frontend/coverage/
 *.tsbuildinfo
 
 # Local database and logs
