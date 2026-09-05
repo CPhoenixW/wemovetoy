@@ -13,12 +13,150 @@ enum UserRole {
   ADMIN
 }
 
+enum DealerCompanyStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum DealerMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum DealerApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
+  id                   Int      @id @default(autoincrement())
+  email                String   @unique
+  passwordHash         String
+  name                 String?
+  role                 UserRole @default(USER)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  dealerMemberships    DealerMember[]
+  dealerApplications   DealerApplication[]
+  reviewedApplications DealerApplication[] @relation("ApplicationReviewer")
+  cart                 Cart?
+  orders               Order[]
+}
+
+model DealerCompany {
+  id           Int                 @id @default(autoincrement())
+  name         String
+  contactName  String?
+  contactPhone String?
+  address      String?
+  taxId        String?
+  status       DealerCompanyStatus @default(ACTIVE)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  members      DealerMember[]
+  applications DealerApplication[]
+}
+
+model DealerMember {
+  id        Int              @id @default(autoincrement())
+  companyId Int
+  userId    Int
+  role      DealerMemberRole @default(MEMBER)
+  createdAt DateTime         @default(now())
+  company   DealerCompany    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+}
+
+model DealerApplication {
+  id           Int                     @id @default(autoincrement())
+  userId       Int
+  companyName  String
+  contactName  String?
+  contactPhone String?
+  address      String?
+  taxId        String?
+  status       DealerApplicationStatus @default(PENDING)
+  reviewNote   String?
+  reviewedById Int?
+  reviewedAt   DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  user         User                    @relation(fields: [userId], references: [id])
+  reviewer     User?                   @relation("ApplicationReviewer", fields: [reviewedById], references: [id])
+  companyId    Int?
+  company      DealerCompany?          @relation(fields: [companyId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Cart {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int
+  variantId Int
+  quantity  Int      @default(1)
+  unitPrice Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+model Order {
+  id             Int         @id @default(autoincrement())
+  userId         Int
+  orderNumber    String      @unique
+  status         OrderStatus @default(PENDING)
+  totalAmount    Decimal     @db.Decimal(12, 2)
+  shippingName   String?
+  shippingPhone  String?
+  shippingAddress String?
+  remark         String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items          OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
   id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  role         UserRole @default(USER)
+  orderId      Int
+  variantId    Int
+  productName  String
+  variantName  String?
+  quantity     Int
+  unitPrice    Decimal  @db.Decimal(10, 2)
+  subtotal     Decimal  @db.Decimal(12, 2)
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }

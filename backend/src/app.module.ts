@@ -13,7 +13,10 @@ import { JwtAuthGuard } from "./common/guards/jwt-auth.guard";
 import { RolesGuard } from "./common/guards/roles.guard";
 import { SuccessResponseInterceptor } from "./common/interceptors/success-response.interceptor";
 import { RequestIdMiddleware } from "./common/middleware/request-id.middleware";
+import { CartModule } from "./cart/cart.module";
+import { DealersModule } from "./dealers/dealers.module";
 import { HealthModule } from "./health/health.module";
+import { OrdersModule } from "./orders/orders.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { UsersModule } from "./users/users.module";
 
@@ -29,6 +32,9 @@ import { UsersModule } from "./users/users.module";
     AuthModule,
     AccessModule,
     HealthModule,
+    DealersModule,
+    CartModule,
+    OrdersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
