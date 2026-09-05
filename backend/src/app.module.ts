@@ -29,6 +29,7 @@ import { UsersModule } from "./users/users.module";
     AuthModule,
     AccessModule,
     HealthModule,
+    ProductsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

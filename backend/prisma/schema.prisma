@@ -22,3 +22,110 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+// 分类表
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  slug        String   @unique @db.VarChar(120)
+  description String?  @db.Text
+  parentId    Int?     @map("parent_id")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  parent      Category? @relation("CategoryParent", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryParent")
+  products    Product[]
+
+  @@map("categories")
+  @@index([slug])
+  @@index([parentId])
+}
+
+// 商品表
+model Product {
+  id               Int      @id @default(autoincrement())
+  name             String   @db.VarChar(200)
+  slug             String   @unique @db.VarChar(220)
+  categoryId       Int?     @map("category_id")
+  shortDescription String   @map("short_description") @db.Text
+  description      String   @db.Text
+  price            Decimal  @db.Decimal(10, 2)
+  dealerPrice      Decimal? @map("dealer_price") @db.Decimal(10, 2)
+  ageMin           Int?     @map("age_min")
+  ageMax           Int?     @map("age_max")
+  playEnvironment  String?  @map("play_environment") @db.VarChar(50)
+  status           ProductStatus @default(DRAFT)
+  features         Json?    @db.Json
+  specifications   Json?    @db.Json
+  createdBy        Int?     @map("created_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  category         Category?   @relation(fields: [categoryId], references: [id])
+  variants         Variant[]
+  images           ProductImage[]
+
+  @@map("products")
+  @@index([slug])
+  @@index([categoryId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// 商品状态枚举
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+// 变体/SKU表
+model Variant {
+  id          Int      @id @default(autoincrement())
+  productId   Int      @map("product_id")
+  sku         String   @unique @db.VarChar(100)
+  name        String   @db.VarChar(200)
+  options     Json?    @db.Json
+  price       Decimal  @db.Decimal(10, 2)
+  dealerPrice Decimal? @map("dealer_price") @db.Decimal(10, 2)
+  stock       Int      @default(0)
+  reserved    Int      @default(0)
+  barcode     String?  @db.VarChar(100)
+  weight      Decimal? @db.Decimal(10, 2)
+  status      VariantStatus @default(ACTIVE)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("variants")
+  @@index([sku])
+  @@index([productId])
+  @@index([status])
+}
+
+enum VariantStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// 商品图片表
+model ProductImage {
+  id         Int      @id @default(autoincrement())
+  productId  Int      @map("product_id")
+  url        String   @db.VarChar(500)
+  alt        String?  @db.VarChar(200)
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+  @@index([productId])
+  @@index([productId, isPrimary])
+}
