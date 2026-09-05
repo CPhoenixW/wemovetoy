@@ -413,3 +413,82 @@ button:disabled { cursor: wait; opacity: 0.7; }
   display: flex;
   gap: 16px;
 }
+
+/* ============ Dealer 审核页面 ============ */
+
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.filter-tab {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 20px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-tab:hover { border-color: #005f57; }
+.filter-tab.active {
+  background: #005f57;
+  border-color: #005f57;
+  color: #ffffff;
+}
+.filter-count {
+  background: #e5e7eb;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+}
+.filter-tab.active .filter-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+.link-success {
+  background: none;
+  border: none;
+  color: #065f46;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+}
+.link-success:hover { text-decoration: underline; }
+.link-secondary {
+  background: none;
+  border: none;
+  color: #60706a;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+}
+.link-secondary:hover { text-decoration: underline; }
+.company-name { font-weight: 500; color: #152028; }
+.company-contact { font-size: 12px; color: #60706a; margin-top: 2px; }
+
+/* 详情 Modal 网格 */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.detail-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.detail-full { grid-column: 1 / -1; }
+.detail-label {
+  font-size: 12px;
+  color: #60706a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
