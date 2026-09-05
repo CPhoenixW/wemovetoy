@@ -1,4 +1,10 @@
-import { Product, Variant, Category, ProductStatus } from '@prisma/client';
+import {
+  Prisma,
+  Product,
+  Variant,
+  Category,
+  ProductStatus,
+} from "@prisma/client";
 
 // 对外暴露的安全商品类型（不包含内部敏感字段）
 export interface SafeProduct {
@@ -13,8 +19,8 @@ export interface SafeProduct {
   ageMax: number | null;
   playEnvironment: string | null;
   status: ProductStatus;
-  features: any;
-  specifications: any;
+  features: Prisma.JsonValue;
+  specifications: Prisma.JsonValue;
   categoryId: number | null;
   createdAt: Date;
   updatedAt: Date;
@@ -22,8 +28,18 @@ export interface SafeProduct {
 
 // 包含分类和变体的完整商品详情
 export interface SafeProductWithRelations extends SafeProduct {
-  category: Pick<Category, 'id' | 'name' | 'slug'> | null;
-  variants: Pick<Variant, 'id' | 'sku' | 'name' | 'options' | 'price' | 'dealerPrice' | 'stock' | 'status'>[];
+  category: Pick<Category, "id" | "name" | "slug"> | null;
+  variants: Pick<
+    Variant,
+    | "id"
+    | "sku"
+    | "name"
+    | "options"
+    | "price"
+    | "dealerPrice"
+    | "stock"
+    | "status"
+  >[];
 }
 
 export function toSafeProduct(product: Product): SafeProduct {

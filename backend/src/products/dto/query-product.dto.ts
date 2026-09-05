@@ -1,6 +1,13 @@
-import { IsOptional, IsString, IsNumber, IsEnum, Min, Max } from 'class-validator';
-import { ProductStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsEnum,
+  Min,
+  Max,
+} from "class-validator";
+import { ProductStatus } from "@prisma/client";
+import { Type } from "class-transformer";
 
 export class QueryProductDto {
   @IsOptional()
@@ -18,7 +25,7 @@ export class QueryProductDto {
 
   @IsOptional()
   @IsString()
-  sort?: string; // 'price_asc', 'price_desc', 'name_asc', 'name_desc', 'newest'
+  sort?: string; // "price_asc", "price_desc", "name_asc", "name_desc", "newest"
 
   @IsOptional()
   @IsNumber()

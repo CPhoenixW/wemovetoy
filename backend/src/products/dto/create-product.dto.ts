@@ -1,6 +1,15 @@
-import { IsString, IsOptional, IsNumber, IsEnum, IsArray, IsObject, Min, Max } from 'class-validator';
-import { ProductStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsEnum,
+  IsArray,
+  IsObject,
+  Min,
+  Max,
+} from "class-validator";
+import { Prisma, ProductStatus } from "@prisma/client";
+import { Type } from "class-transformer";
 
 export class CreateProductDto {
   @IsString()
@@ -53,7 +62,7 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsObject()
-  specifications?: Record<string, any>;
+  specifications?: Prisma.InputJsonObject;
 
   @IsOptional()
   @IsNumber()
