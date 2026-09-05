@@ -62,14 +62,7 @@ export class ProductsService {
     page: number;
     totalPages: number;
   }> {
-    const {
-      page = 1,
-      limit = 20,
-      sort,
-      categoryId,
-      status,
-      search,
-    } = query;
+    const { page = 1, limit = 20, sort, categoryId, status, search } = query;
 
     // 构建 where 条件
     const where: Prisma.ProductWhereInput = {
