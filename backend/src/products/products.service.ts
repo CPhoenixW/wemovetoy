@@ -45,7 +45,7 @@ export class ProductsService {
         playEnvironment: input.playEnvironment,
         status: input.status ?? ProductStatus.DRAFT,
         features: input.features ?? [],
-        specifications: input.specifications as any,
+        specifications: input.specifications as Prisma.InputJsonValue,
         categoryId: input.categoryId,
       },
     });
@@ -234,7 +234,7 @@ export class ProductsService {
         playEnvironment: input.playEnvironment,
         status: input.status,
         features: input.features,
-        specifications: input.specifications as any,
+        specifications: input.specifications as Prisma.InputJsonValue,
         categoryId: input.categoryId,
       },
     });
