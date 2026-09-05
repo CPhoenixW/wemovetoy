@@ -1,10 +1,18 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { ProductStatus } from '@prisma/client';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { QueryProductDto } from './dto/query-product.dto';
-import { SafeProduct, SafeProductWithRelations, toSafeProduct } from './safe-product';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { ProductStatus } from "@prisma/client";
+import { CreateProductDto } from "./dto/create-product.dto";
+import { UpdateProductDto } from "./dto/update-product.dto";
+import { QueryProductDto } from "./dto/query-product.dto";
+import {
+  SafeProduct,
+  SafeProductWithRelations,
+  toSafeProduct,
+} from "./safe-product";
 
 @Injectable()
 export class ProductsService {
@@ -19,7 +27,9 @@ export class ProductsService {
       where: { slug: input.slug },
     });
     if (existing) {
-      throw new ConflictException(`Product with slug "${input.slug}" already exists`);
+      throw new ConflictException(
+        `Product with slug "${input.slug}" already exists`,
+      );
     }
 
     const product = await this.prisma.product.create({
@@ -55,8 +65,17 @@ export class ProductsService {
     const { page, limit, sort, categoryId, status, search } = query;
 
     // 构建 where 条件
-    const where: any = {
-      deletedAt: null, // 只查未删除的
+    const where: {
+      deletedAt: null;
+      categoryId?: number;
+      status?: ProductStatus;
+      OR?: Array<
+        | { name: { contains: string; mode: "insensitive" } }
+        | { shortDescription: { contains: string; mode: "insensitive" } }
+        | { description: { contains: string; mode: "insensitive" } }
+      >;
+    } = {
+      deletedAt: null,
     };
 
     if (categoryId) {
@@ -67,24 +86,30 @@ export class ProductsService {
     }
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { shortDescription: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: "insensitive" } },
+        { shortDescription: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
       ];
     }
 
     // 构建 orderBy
-    let orderBy: any = { createdAt: 'desc' };
-    if (sort === 'price_asc') {
-      orderBy = { price: 'asc' };
-    } else if (sort === 'price_desc') {
-      orderBy = { price: 'desc' };
-    } else if (sort === 'name_asc') {
-      orderBy = { name: 'asc' };
-    } else if (sort === 'name_desc') {
-      orderBy = { name: 'desc' };
-    } else if (sort === 'newest') {
-      orderBy = { createdAt: 'desc' };
+    type OrderByType =
+      | { createdAt: "desc" }
+      | { price: "asc" }
+      | { price: "desc" }
+      | { name: "asc" }
+      | { name: "desc" };
+    let orderBy: OrderByType = { createdAt: "desc" };
+    if (sort === "price_asc") {
+      orderBy = { price: "asc" };
+    } else if (sort === "price_desc") {
+      orderBy = { price: "desc" };
+    } else if (sort === "name_asc") {
+      orderBy = { name: "asc" };
+    } else if (sort === "name_desc") {
+      orderBy = { name: "desc" };
+    } else if (sort === "newest") {
+      orderBy = { createdAt: "desc" };
     }
 
     const [items, total] = await Promise.all([
@@ -131,7 +156,7 @@ export class ProductsService {
             stock: true,
             status: true,
           },
-          where: { status: 'ACTIVE' },
+          where: { status: "ACTIVE" },
         },
       },
     });
@@ -152,7 +177,7 @@ export class ProductsService {
   // ============================================================
   async findBySlug(slug: string): Promise<SafeProductWithRelations> {
     const product = await this.prisma.product.findUnique({
-      where: { slug, deletedAt: null, status: 'ACTIVE' },
+      where: { slug, deletedAt: null, status: "ACTIVE" },
       include: {
         category: {
           select: { id: true, name: true, slug: true },
@@ -168,7 +193,7 @@ export class ProductsService {
             stock: true,
             status: true,
           },
-          where: { status: 'ACTIVE' },
+          where: { status: "ACTIVE" },
         },
       },
     });
@@ -202,7 +227,9 @@ export class ProductsService {
         where: { slug: input.slug },
       });
       if (conflict) {
-        throw new ConflictException(`Product with slug "${input.slug}" already exists`);
+        throw new ConflictException(
+          `Product with slug "${input.slug}" already exists`,
+        );
       }
     }
 

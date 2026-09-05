@@ -9,17 +9,17 @@ import {
   Query,
   ParseIntPipe,
   UseGuards,
-} from '@nestjs/common';
-import { ProductsService } from './products.service';
-import { CreateProductDto } from './dto/create-product.dto';
-import { UpdateProductDto } from './dto/update-product.dto';
-import { QueryProductDto } from './dto/query-product.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { Roles } from '../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+} from "@nestjs/common";
+import { ProductsService } from "./products.service";
+import { CreateProductDto } from "./dto/create-product.dto";
+import { UpdateProductDto } from "./dto/update-product.dto";
+import { QueryProductDto } from "./dto/query-product.dto";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RolesGuard } from "../common/guards/roles.guard";
+import { Roles } from "../common/decorators/roles.decorator";
+import { UserRole } from "@prisma/client";
 
-@Controller('api/v1')
+@Controller("api/v1")
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
@@ -27,7 +27,7 @@ export class ProductsController {
   // 公开接口：商品列表（所有人可访问）
   // GET /api/v1/products
   // ============================================================
-  @Get('products')
+  @Get("products")
   async findAll(@Query() query: QueryProductDto) {
     return this.productsService.findAll(query);
   }
@@ -36,8 +36,8 @@ export class ProductsController {
   // 公开接口：商品详情（通过 slug）
   // GET /api/v1/products/:slug
   // ============================================================
-  @Get('products/:slug')
-  async findBySlug(@Param('slug') slug: string) {
+  @Get("products/:slug")
+  async findBySlug(@Param("slug") slug: string) {
     return this.productsService.findBySlug(slug);
   }
 
@@ -45,10 +45,10 @@ export class ProductsController {
   // 后台接口：获取单个商品（通过 id，管理员专用）
   // GET /api/v1/admin/products/:id
   // ============================================================
-  @Get('admin/products/:id')
+  @Get("admin/products/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param("id", ParseIntPipe) id: number) {
     return this.productsService.findOne(id);
   }
 
@@ -56,7 +56,7 @@ export class ProductsController {
   // 后台接口：创建商品（管理员专用）
   // POST /api/v1/admin/products
   // ============================================================
-  @Post('admin/products')
+  @Post("admin/products")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async create(@Body() input: CreateProductDto) {
@@ -67,10 +67,13 @@ export class ProductsController {
   // 后台接口：更新商品（管理员专用）
   // PATCH /api/v1/admin/products/:id
   // ============================================================
-  @Patch('admin/products/:id')
+  @Patch("admin/products/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async update(@Param('id', ParseIntPipe) id: number, @Body() input: UpdateProductDto) {
+  async update(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() input: UpdateProductDto,
+  ) {
     return this.productsService.update(id, input);
   }
 
@@ -78,22 +81,22 @@ export class ProductsController {
   // 后台接口：删除商品（管理员专用）
   // DELETE /api/v1/admin/products/:id
   // ============================================================
-  @Delete('admin/products/:id')
+  @Delete("admin/products/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async remove(@Param('id', ParseIntPipe) id: number) {
+  async remove(@Param("id", ParseIntPipe) id: number) {
     await this.productsService.remove(id);
-    return { message: 'Product deleted successfully' };
+    return { message: "Product deleted successfully" };
   }
 
   // ============================================================
   // 后台接口：发布商品（管理员专用）
   // POST /api/v1/admin/products/:id/publish
   // ============================================================
-  @Post('admin/products/:id/publish')
+  @Post("admin/products/:id/publish")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async publish(@Param('id', ParseIntPipe) id: number) {
+  async publish(@Param("id", ParseIntPipe) id: number) {
     return this.productsService.publish(id);
   }
 }
