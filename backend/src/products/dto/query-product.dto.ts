@@ -25,7 +25,7 @@ export class QueryProductDto {
 
   @IsOptional()
   @IsString()
-  sort?: string; // 'price_asc', 'price_desc', 'name_asc', 'name_desc', 'newest'
+  sort?: string; // "price_asc", "price_desc", "name_asc", "name_desc", "newest"
 
   @IsOptional()
   @IsNumber()

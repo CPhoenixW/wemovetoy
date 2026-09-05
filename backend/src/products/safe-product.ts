@@ -1,4 +1,10 @@
-import { Product, Variant, Category, ProductStatus } from "@prisma/client";
+import {
+  Prisma,
+  Product,
+  Variant,
+  Category,
+  ProductStatus,
+} from "@prisma/client";
 
 // 对外暴露的安全商品类型（不包含内部敏感字段）
 export interface SafeProduct {
@@ -13,8 +19,8 @@ export interface SafeProduct {
   ageMax: number | null;
   playEnvironment: string | null;
   status: ProductStatus;
-  features: string[] | null;
-  specifications: Record<string, unknown> | null;
+  features: Prisma.JsonValue;
+  specifications: Prisma.JsonValue;
   categoryId: number | null;
   createdAt: Date;
   updatedAt: Date;

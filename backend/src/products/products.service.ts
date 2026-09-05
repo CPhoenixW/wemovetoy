@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { ProductStatus } from "@prisma/client";
+import { Prisma, ProductStatus } from "@prisma/client";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { QueryProductDto } from "./dto/query-product.dto";
@@ -45,7 +45,7 @@ export class ProductsService {
         playEnvironment: input.playEnvironment,
         status: input.status ?? ProductStatus.DRAFT,
         features: input.features ?? [],
-        specifications: input.specifications ?? {},
+        specifications: input.specifications as any,
         categoryId: input.categoryId,
       },
     });
@@ -62,20 +62,11 @@ export class ProductsService {
     page: number;
     totalPages: number;
   }> {
-    const { page, limit, sort, categoryId, status, search } = query;
+    const { page = 1, limit = 20, sort, categoryId, status, search } = query;
 
     // 构建 where 条件
-    const where: {
-      deletedAt: null;
-      categoryId?: number;
-      status?: ProductStatus;
-      OR?: Array<
-        | { name: { contains: string; mode: "insensitive" } }
-        | { shortDescription: { contains: string; mode: "insensitive" } }
-        | { description: { contains: string; mode: "insensitive" } }
-      >;
-    } = {
-      deletedAt: null,
+    const where: Prisma.ProductWhereInput = {
+      deletedAt: null, // 只查未删除的
     };
 
     if (categoryId) {
@@ -93,13 +84,9 @@ export class ProductsService {
     }
 
     // 构建 orderBy
-    type OrderByType =
-      | { createdAt: "desc" }
-      | { price: "asc" }
-      | { price: "desc" }
-      | { name: "asc" }
-      | { name: "desc" };
-    let orderBy: OrderByType = { createdAt: "desc" };
+    let orderBy: Prisma.ProductOrderByWithRelationInput = {
+      createdAt: "desc",
+    };
     if (sort === "price_asc") {
       orderBy = { price: "asc" };
     } else if (sort === "price_desc") {
@@ -247,7 +234,7 @@ export class ProductsService {
         playEnvironment: input.playEnvironment,
         status: input.status,
         features: input.features,
-        specifications: input.specifications,
+        specifications: input.specifications as any,
         categoryId: input.categoryId,
       },
     });

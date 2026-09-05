@@ -16,6 +16,7 @@ import { RequestIdMiddleware } from "./common/middleware/request-id.middleware";
 import { HealthModule } from "./health/health.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { UsersModule } from "./users/users.module";
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [

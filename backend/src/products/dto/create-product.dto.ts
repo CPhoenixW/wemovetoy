@@ -13,21 +13,21 @@ import { Type } from "class-transformer";
 
 export class CreateProductDto {
   @IsString()
-  name: string;
+  name!: string;
 
   @IsString()
-  slug: string;
+  slug!: string;
 
   @IsString()
-  shortDescription: string;
+  shortDescription!: string;
 
   @IsString()
-  description: string;
+  description!: string;
 
   @IsNumber()
   @Min(0)
   @Type(() => Number)
-  price: number;
+  price!: number;
 
   @IsOptional()
   @IsNumber()
