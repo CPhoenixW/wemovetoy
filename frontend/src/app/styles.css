@@ -52,3 +52,128 @@ button:disabled { cursor: wait; opacity: 0.7; }
 @media (max-width: 640px) {
   .site-header, .page-shell { padding-left: 20px; padding-right: 20px; }
 }
+
+/* ============ Admin / Dealer 后台布局 ============ */
+
+.admin-shell,
+.dealer-shell {
+  display: flex;
+  min-height: calc(100vh - 64px);
+  margin-top: 64px;
+}
+
+/* 侧边栏 */
+.admin-sidebar,
+.dealer-sidebar {
+  background: #152028;
+  color: #f7f8f6;
+  width: 240px;
+  padding: 32px 0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 64px;
+  bottom: 0;
+  left: 0;
+}
+
+.admin-brand,
+.dealer-brand {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 0 32px 32px;
+  text-decoration: none;
+  border-bottom: 1px solid #2a3a34;
+  margin-bottom: 16px;
+}
+
+.admin-nav,
+.dealer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-nav a,
+.dealer-nav a {
+  color: #c5cfca;
+  padding: 12px 32px;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.admin-nav a:hover,
+.dealer-nav a:hover {
+  background: #24302c;
+  color: #ffffff;
+}
+
+/* 主内容区 */
+.admin-main,
+.dealer-main {
+  flex: 1;
+  margin-left: 240px;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-topbar,
+.dealer-topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #dce1df;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 32px;
+  min-height: 56px;
+}
+
+.admin-user,
+.dealer-user {
+  font-size: 14px;
+  color: #60706a;
+}
+
+.admin-content,
+.dealer-content {
+  padding: 48px 32px;
+  flex: 1;
+}
+
+.logout-btn {
+  background: transparent;
+  border: 1px solid #a9b5b0;
+  color: #60706a;
+  font-size: 13px;
+  padding: 6px 16px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: #f0f2f1;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .admin-sidebar,
+  .dealer-sidebar {
+    width: 60px;
+    padding: 16px 0;
+  }
+  .admin-brand,
+  .dealer-brand {
+    padding: 0 16px 16px;
+    font-size: 14px;
+  }
+  .admin-nav a,
+  .dealer-nav a {
+    padding: 12px 16px;
+    font-size: 12px;
+  }
+  .admin-main,
+  .dealer-main {
+    margin-left: 60px;
+  }
+}
