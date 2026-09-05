@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { setCurrentUser, setToken } from "@/lib/api/auth";
 import { ApiError, apiRequest } from "@/lib/api/client";
 import type { LoginResult } from "@/lib/api/types";
 
@@ -22,8 +23,8 @@ export default function LoginPage() {
           password: form.get("password"),
         }),
       });
-      sessionStorage.setItem("wemove.accessToken", result.accessToken);
-      sessionStorage.setItem("wemove.user", JSON.stringify(result.user));
+      setToken(result.accessToken);
+      setCurrentUser(result.user);
       window.location.assign("/products");
     } catch (caughtError) {
       setError(
