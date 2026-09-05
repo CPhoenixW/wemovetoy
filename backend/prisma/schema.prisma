@@ -13,14 +13,154 @@ enum UserRole {
   ADMIN
 }
 
+enum DealerCompanyStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum DealerMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum DealerApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  role         UserRole @default(USER)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   Int                 @id @default(autoincrement())
+  email                String              @unique
+  passwordHash         String
+  name                 String?
+  role                 UserRole            @default(USER)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  dealerMemberships    DealerMember[]
+  dealerApplications   DealerApplication[]
+  reviewedApplications DealerApplication[] @relation("ApplicationReviewer")
+  cart                 Cart?
+  orders               Order[]
+}
+
+model DealerCompany {
+  id           Int                 @id @default(autoincrement())
+  name         String
+  contactName  String?
+  contactPhone String?
+  address      String?
+  taxId        String?
+  status       DealerCompanyStatus @default(ACTIVE)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  members      DealerMember[]
+  applications DealerApplication[]
+}
+
+model DealerMember {
+  id        Int              @id @default(autoincrement())
+  companyId Int
+  userId    Int
+  role      DealerMemberRole @default(MEMBER)
+  createdAt DateTime         @default(now())
+  company   DealerCompany    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+}
+
+model DealerApplication {
+  id           Int                     @id @default(autoincrement())
+  userId       Int
+  companyName  String
+  contactName  String?
+  contactPhone String?
+  address      String?
+  taxId        String?
+  status       DealerApplicationStatus @default(PENDING)
+  reviewNote   String?
+  reviewedById Int?
+  reviewedAt   DateTime?
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  user         User                    @relation(fields: [userId], references: [id])
+  reviewer     User?                   @relation("ApplicationReviewer", fields: [reviewedById], references: [id])
+  companyId    Int?
+  company      DealerCompany?          @relation(fields: [companyId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  userId    Int        @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int
+  variantId Int
+  quantity  Int      @default(1)
+  unitPrice Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant   Variant  @relation("CartItemVariant", fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  userId          Int
+  orderNumber     String      @unique
+  status          OrderStatus @default(PENDING)
+  totalAmount     Decimal     @db.Decimal(12, 2)
+  shippingName    String?
+  shippingPhone   String?
+  shippingAddress String?
+  remark          String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items           OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  variantId   Int
+  productName String
+  variantName String?
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  subtotal    Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant     Variant  @relation("OrderItemVariant", fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
 }
 
 // 分类表
@@ -35,45 +175,45 @@ model Category {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  parent      Category? @relation("CategoryParent", fields: [parentId], references: [id])
-  children    Category[] @relation("CategoryParent")
-  products    Product[]
+  parent   Category?  @relation("CategoryParent", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryParent")
+  products Product[]
 
-  @@map("categories")
   @@index([slug])
   @@index([parentId])
+  @@map("categories")
 }
 
 // 商品表
 model Product {
-  id               Int      @id @default(autoincrement())
-  name             String   @db.VarChar(200)
-  slug             String   @unique @db.VarChar(220)
-  categoryId       Int?     @map("category_id")
-  shortDescription String   @map("short_description") @db.Text
-  description      String   @db.Text
-  price            Decimal  @db.Decimal(10, 2)
-  dealerPrice      Decimal? @map("dealer_price") @db.Decimal(10, 2)
-  ageMin           Int?     @map("age_min")
-  ageMax           Int?     @map("age_max")
-  playEnvironment  String?  @map("play_environment") @db.VarChar(50)
+  id               Int           @id @default(autoincrement())
+  name             String        @db.VarChar(200)
+  slug             String        @unique @db.VarChar(220)
+  categoryId       Int?          @map("category_id")
+  shortDescription String        @map("short_description") @db.Text
+  description      String        @db.Text
+  price            Decimal       @db.Decimal(10, 2)
+  dealerPrice      Decimal?      @map("dealer_price") @db.Decimal(10, 2)
+  ageMin           Int?          @map("age_min")
+  ageMax           Int?          @map("age_max")
+  playEnvironment  String?       @map("play_environment") @db.VarChar(50)
   status           ProductStatus @default(DRAFT)
-  features         Json?    @db.Json
-  specifications   Json?    @db.Json
-  createdBy        Int?     @map("created_by")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-  deletedAt        DateTime? @map("deleted_at")
+  features         Json?         @db.Json
+  specifications   Json?         @db.Json
+  createdBy        Int?          @map("created_by")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  deletedAt        DateTime?     @map("deleted_at")
 
-  category         Category?   @relation(fields: [categoryId], references: [id])
-  variants         Variant[]
-  images           ProductImage[]
+  category Category?      @relation(fields: [categoryId], references: [id])
+  variants Variant[]
+  images   ProductImage[]
 
-  @@map("products")
   @@index([slug])
   @@index([categoryId])
   @@index([status])
   @@index([deletedAt])
+  @@map("products")
 }
 
 // 商品状态枚举
@@ -85,27 +225,29 @@ enum ProductStatus {
 
 // 变体/SKU表
 model Variant {
-  id          Int      @id @default(autoincrement())
-  productId   Int      @map("product_id")
-  sku         String   @unique @db.VarChar(100)
-  name        String   @db.VarChar(200)
-  options     Json?    @db.Json
-  price       Decimal  @db.Decimal(10, 2)
-  dealerPrice Decimal? @map("dealer_price") @db.Decimal(10, 2)
-  stock       Int      @default(0)
-  reserved    Int      @default(0)
-  barcode     String?  @db.VarChar(100)
-  weight      Decimal? @db.Decimal(10, 2)
+  id          Int           @id @default(autoincrement())
+  productId   Int           @map("product_id")
+  sku         String        @unique @db.VarChar(100)
+  name        String        @db.VarChar(200)
+  options     Json?         @db.Json
+  price       Decimal       @db.Decimal(10, 2)
+  dealerPrice Decimal?      @map("dealer_price") @db.Decimal(10, 2)
+  stock       Int           @default(0)
+  reserved    Int           @default(0)
+  barcode     String?       @db.VarChar(100)
+  weight      Decimal?      @db.Decimal(10, 2)
   status      VariantStatus @default(ACTIVE)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems  CartItem[]  @relation("CartItemVariant")
+  orderItems OrderItem[] @relation("OrderItemVariant")
 
-  @@map("variants")
   @@index([sku])
   @@index([productId])
   @@index([status])
+  @@map("variants")
 }
 
 enum VariantStatus {
@@ -115,17 +257,17 @@ enum VariantStatus {
 
 // 商品图片表
 model ProductImage {
-  id         Int      @id @default(autoincrement())
-  productId  Int      @map("product_id")
-  url        String   @db.VarChar(500)
-  alt        String?  @db.VarChar(200)
-  isPrimary  Boolean  @default(false) @map("is_primary")
-  sortOrder  Int      @default(0) @map("sort_order")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id        Int      @id @default(autoincrement())
+  productId Int      @map("product_id")
+  url       String   @db.VarChar(500)
+  alt       String?  @db.VarChar(200)
+  isPrimary Boolean  @default(false) @map("is_primary")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@map("product_images")
   @@index([productId])
   @@index([productId, isPrimary])
+  @@map("product_images")
 }

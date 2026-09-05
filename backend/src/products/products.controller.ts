@@ -17,9 +17,10 @@ import { QueryProductDto } from "./dto/query-product.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
+import { Public } from "../common/decorators/public.decorator";
 import { UserRole } from "@prisma/client";
 
-@Controller("api/v1")
+@Controller()
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
@@ -27,6 +28,7 @@ export class ProductsController {
   // 公开接口：商品列表（所有人可访问）
   // GET /api/v1/products
   // ============================================================
+  @Public()
   @Get("products")
   async findAll(@Query() query: QueryProductDto) {
     return this.productsService.findAll(query);
@@ -36,6 +38,7 @@ export class ProductsController {
   // 公开接口：商品详情（通过 slug）
   // GET /api/v1/products/:slug
   // ============================================================
+  @Public()
   @Get("products/:slug")
   async findBySlug(@Param("slug") slug: string) {
     return this.productsService.findBySlug(slug);
