@@ -357,3 +357,59 @@ button:disabled { cursor: wait; opacity: 0.7; }
   padding: 48px;
   color: #60706a;
 }
+
+/* ============ 商品管理页面 ============ */
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.page-subtitle {
+  margin: 8px 0 0;
+  color: #60706a;
+  font-size: 14px;
+}
+.toolbar {
+  margin-bottom: 16px;
+}
+.search-input {
+  border: 1px solid #a9b5b0;
+  border-radius: 4px;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 12px;
+  width: 320px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.search-input:focus {
+  outline: none;
+  border-color: #005f57;
+}
+.col-id { width: 60px; }
+.col-price { width: 110px; }
+.col-actions { width: 140px; }
+.link-primary {
+  color: #005f57;
+  text-decoration: none;
+  font-weight: 500;
+}
+.link-primary:hover { text-decoration: underline; }
+.link-danger {
+  background: none;
+  border: none;
+  color: #b42318;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+}
+.link-danger:hover { text-decoration: underline; }
+.row-actions {
+  display: flex;
+  gap: 16px;
+}
