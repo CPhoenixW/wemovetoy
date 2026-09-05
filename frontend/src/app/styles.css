@@ -177,3 +177,183 @@ button:disabled { cursor: wait; opacity: 0.7; }
     margin-left: 60px;
   }
 }
+
+/* ============ 共享 UI 组件 ============ */
+
+/* StatusBadge */
+.status-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* FormField */
+.form-field {
+  display: grid;
+  gap: 6px;
+}
+.form-field label {
+  font-size: 14px;
+  color: #152028;
+  font-weight: 500;
+}
+.form-field input,
+.form-field textarea,
+.form-field select {
+  border: 1px solid #a9b5b0;
+  border-radius: 4px;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+.form-field textarea { min-height: 100px; resize: vertical; }
+.form-field select { min-height: 40px; }
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+  outline: none;
+  border-color: #005f57;
+  box-shadow: 0 0 0 3px rgba(0, 95, 87, 0.1);
+}
+.form-field.has-error input,
+.form-field.has-error textarea,
+.form-field.has-error select {
+  border-color: #b42318;
+}
+.required { color: #b42318; }
+.field-error { font-size: 12px; color: #b42318; }
+
+/* 通用按钮 */
+.btn-primary {
+  background: #005f57;
+  border: 1px solid #005f57;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 20px;
+  border-radius: 4px;
+}
+.btn-primary:hover { background: #004a44; }
+.btn-secondary {
+  background: transparent;
+  border: 1px solid #a9b5b0;
+  color: #152028;
+  cursor: pointer;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 20px;
+  border-radius: 4px;
+}
+.btn-secondary:hover { background: #f0f2f1; }
+.btn-danger {
+  background: #b42318;
+  border: 1px solid #b42318;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 20px;
+  border-radius: 4px;
+}
+.btn-danger:hover { background: #991b1b; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(21, 32, 40, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: #ffffff;
+  border-radius: 8px;
+  min-width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.modal-header h3 { margin: 0; font-size: 16px; }
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #60706a;
+  min-height: auto;
+  padding: 0;
+}
+.modal-body { padding: 24px; }
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* EmptyState */
+.empty-state {
+  text-align: center;
+  padding: 64px 24px;
+  color: #60706a;
+}
+.empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-state h3 { color: #152028; font-size: 16px; margin: 0 0 8px; }
+.empty-state p { margin: 0; font-size: 14px; }
+.empty-action { margin-top: 20px; }
+
+/* DataTable */
+.table-wrapper {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.data-table thead {
+  background: #f7f8f6;
+  border-bottom: 1px solid #dce1df;
+}
+.data-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: #60706a;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f2f1;
+  color: #152028;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr.clickable { cursor: pointer; }
+.data-table tbody tr.clickable:hover { background: #f7f8f6; }
+.table-loading {
+  text-align: center;
+  padding: 48px;
+  color: #60706a;
+}
