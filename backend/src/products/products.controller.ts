@@ -20,6 +20,7 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { Public } from "../common/decorators/public.decorator";
 import { UserRole } from "@prisma/client";
+import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import {
   PublicProductListItemDto,
   PublicProductDetailDto,
@@ -55,6 +56,7 @@ type PublicProductSource = {
   createdAt: Date;
 };
 
+@ApiTags("products")
 @Controller()
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -65,6 +67,7 @@ export class ProductsController {
   // ============================================================
   @Public()
   @Get("products")
+  @ApiOperation({ summary: "List public active products" })
   async findAll(@Query() query: PublicQueryProductDto) {
     const result = await this.productsService.findAll(query, true);
     return {
@@ -79,6 +82,7 @@ export class ProductsController {
   // ============================================================
   @Public()
   @Get("products/:slug")
+  @ApiOperation({ summary: "Get a public active product by slug" })
   async findBySlug(@Param("slug") slug: string) {
     const product = await this.productsService.findBySlug(slug);
     return this.toPublicDetail(product);
@@ -173,6 +177,8 @@ export class ProductsController {
   @Get("admin/products/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get a product with management fields (admin)" })
   async findOne(@Param("id", ParseIntPipe) id: number) {
     return this.productsService.findOne(id);
   }
@@ -184,6 +190,8 @@ export class ProductsController {
   @Post("admin/products")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Create a draft product (admin)" })
   async create(@Body() input: CreateProductDto) {
     return this.productsService.create(input);
   }
@@ -195,6 +203,8 @@ export class ProductsController {
   @Patch("admin/products/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Update a product (admin)" })
   async update(
     @Param("id", ParseIntPipe) id: number,
     @Body() input: UpdateProductDto,
@@ -209,6 +219,8 @@ export class ProductsController {
   @Delete("admin/products/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Soft-delete a product (admin)" })
   async remove(@Param("id", ParseIntPipe) id: number) {
     await this.productsService.remove(id);
     return { message: "Product deleted successfully" };
@@ -221,6 +233,8 @@ export class ProductsController {
   @Post("admin/products/:id/publish")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Publish a product (admin)" })
   async publish(@Param("id", ParseIntPipe) id: number) {
     return this.productsService.publish(id);
   }
@@ -232,6 +246,8 @@ export class ProductsController {
   @Get("dealer/products")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.DEALER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "List dealer-visible active products" })
   async getDealerProducts(@Query() query: PublicQueryProductDto) {
     return this.productsService.findDealerProducts(query);
   }
@@ -243,6 +259,8 @@ export class ProductsController {
   @Get("admin/products")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "List products with management fields (admin)" })
   async getAdminProducts(@Query() query: QueryProductDto) {
     const result = await this.productsService.findAll(query, false);
     // 返回完整信息，包含所有字段

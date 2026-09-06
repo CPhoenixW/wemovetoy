@@ -152,30 +152,7 @@ async function main() {
         categoryId: category.id,
       },
     });
-    const variantData = [
-      {
-        sku: `${productData.slug}-basic`,
-        name: '基础款',
-        options: { version: '基础' },
-        price: productData.price,
-        dealerPrice: productData.dealerPrice,
-        stock: 80,
-        reserved: 0,
-        status: 'ACTIVE',
-      },
-      {
-        sku: `${productData.slug}-pro`,
-        name: '进阶款',
-        options: { version: '进阶' },
-        price: productData.price * 1.2,
-        dealerPrice: productData.dealerPrice * 1.2,
-        stock: 30,
-        reserved: 0,
-        status: 'ACTIVE',
-      },
-    ];
-
-    // 在创建商品后添加变体
+    // 在创建商品后添加 SKU，重复运行种子时保留现有数据。
     await prisma.variant.createMany({
       data: [
         {
@@ -187,7 +164,7 @@ async function main() {
           dealerPrice: productData.dealerPrice,
           stock: 80,
           reserved: 0,
-          status: VariantStatus.ACTIVE,  // 使用枚举
+          status: VariantStatus.ACTIVE,
         },
         {
           productId: product.id,

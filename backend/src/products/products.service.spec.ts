@@ -95,6 +95,17 @@ describe("VariantsService", () => {
       expect(result.unitPrice.toNumber()).toBe(19.99);
     });
 
+    it("falls back to the retail price when a Dealer SKU price is absent", async () => {
+      mockPrismaService.variant.findUnique.mockResolvedValueOnce({
+        ...mockVariant,
+        dealerPrice: null,
+      });
+
+      const result = await service.getPurchasableVariant(1, "DEALER");
+
+      expect(result.unitPrice.toNumber()).toBe(29.99);
+    });
+
     it("throws 400 for inactive or exhausted variants", async () => {
       mockPrismaService.variant.findUnique.mockResolvedValueOnce({
         ...mockVariant,
