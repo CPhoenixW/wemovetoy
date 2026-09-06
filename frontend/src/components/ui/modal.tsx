@@ -11,6 +11,8 @@ interface ModalProps {
   cancelText?: string;
   onConfirm?: () => void;
   confirmVariant?: "primary" | "danger";
+  /** 确认按钮禁用（提交中防重复点击） */
+  confirmDisabled?: boolean;
 }
 
 export function Modal({
@@ -22,6 +24,7 @@ export function Modal({
   cancelText = "取消",
   onConfirm,
   confirmVariant = "primary",
+  confirmDisabled = false,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -53,6 +56,7 @@ export function Modal({
               type="button"
               className={confirmVariant === "danger" ? "btn-danger" : "btn-primary"}
               onClick={onConfirm}
+              disabled={confirmDisabled}
             >
               {confirmText}
             </button>
