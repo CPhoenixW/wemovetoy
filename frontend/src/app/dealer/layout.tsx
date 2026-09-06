@@ -6,6 +6,7 @@ import { useAuth, useLogout } from "@/lib/hooks/use-auth";
 const dealerNav = [
   { href: "/dealer", label: "Portal 首页" },
   { href: "/dealer/products", label: "商品目录" },
+  { href: "/dealer/cart", label: "购物车" },
 ];
 
 export default function DealerLayout({

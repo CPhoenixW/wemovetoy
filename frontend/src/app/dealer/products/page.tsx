@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Modal } from "@/components/ui/modal";
 import {
@@ -39,13 +40,6 @@ export default function DealerProductsPage() {
   }, [search, category]);
 
   const cartCount = cart.size;
-  const cartTotal = useMemo(() => {
-    let total = 0;
-    cart.forEach((item) => {
-      total += item.product.dealerPrice ?? item.product.price;
-    });
-    return total;
-  }, [cart]);
 
   function addToCart(product: MockProduct) {
     setCart((prev) => {
@@ -72,13 +66,9 @@ export default function DealerProductsPage() {
             专属批发价 · 仅显示上架商品 · 当前购物车 {cartCount} 件
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-primary cart-btn"
-          onClick={() => alert(`购物车：${cartCount} 件，小计 ${formatPrice(cartTotal)}`)}
-        >
+        <Link href="/dealer/cart" className="btn-primary cart-btn">
           🛒 购物车 ({cartCount})
-        </button>
+        </Link>
       </div>
 
       {/* 工具栏：搜索 + 分类 */}

@@ -25,7 +25,12 @@ export default function LoginPage() {
       });
       setToken(result.accessToken);
       setCurrentUser(result.user);
-      window.location.assign("/products");
+      const homeByRole: Record<string, string> = {
+        ADMIN: "/admin",
+        DEALER: "/dealer",
+        USER: "/products",
+      };
+      window.location.assign(homeByRole[result.user.role] ?? "/products");
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError ? caughtError.message : "Unable to sign in",
