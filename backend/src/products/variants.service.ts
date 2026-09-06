@@ -269,6 +269,74 @@ export class VariantsService {
     });
   }
 
+  /**
+   * 供购物车和订单调用的核心方法
+   * 返回商品/SKU 的真实名称、价格、可售库存和状态
+   */
+  async getPurchasableVariant(
+    variantId: number,
+    audience: "public" | "dealer" = "public",
+  ): Promise<{
+    variantId: number;
+    sku: string;
+    productName: string;
+    variantName: string;
+    unitPrice: number;
+    availableStock: number;
+    isPurchasable: boolean;
+    reason?: string;
+  }> {
+    const variant = await this.prisma.variant.findUnique({
+      where: { id: variantId },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            deletedAt: true,
+          },
+        },
+      },
+    });
+
+    if (!variant) {
+      return {
+        variantId,
+        sku: "",
+        productName: "",
+        variantName: "",
+        unitPrice: 0,
+        availableStock: 0,
+        isPurchasable: false,
+        reason: "SKU not found",
+      };
+    }
+
+    const isProductActive =
+      variant.product.status === "ACTIVE" && variant.product.deletedAt === null;
+    const isVariantActive = variant.status === VariantStatus.ACTIVE;
+    const availableStock = variant.stock - variant.reserved;
+    const isPurchasable =
+      isProductActive && isVariantActive && availableStock > 0;
+
+    const unitPrice =
+      audience === "dealer" && variant.dealerPrice
+        ? Number(variant.dealerPrice)
+        : Number(variant.price);
+
+    return {
+      variantId: variant.id,
+      sku: variant.sku,
+      productName: variant.product.name,
+      variantName: variant.name,
+      unitPrice,
+      availableStock,
+      isPurchasable,
+      reason: isPurchasable ? undefined : "Product not available for purchase",
+    };
+  }
+
   private buildVariantResponse(
     variant: Prisma.VariantGetPayload<{
       include: {

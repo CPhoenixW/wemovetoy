@@ -19,6 +19,31 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { Public } from "../common/decorators/public.decorator";
 import { UserRole } from "@prisma/client";
+import {
+  PublicProductListItemDto,
+  PublicProductDetailDto,
+} from "./dto/public-product.dto";
+
+// 兼容类型：处理实际返回的数据结构
+type PublicProductSource = {
+  id: number;
+  name: string;
+  slug: string;
+  shortDescription: string;
+  description?: string;
+  price: number;
+  ageMin: number | null;
+  ageMax: number | null;
+  playEnvironment: string | null;
+  features?: unknown;
+  specifications?: unknown;
+  category?: {
+    id: number;
+    name: string;
+    slug: string;
+  } | null;
+  createdAt: Date;
+};
 
 @Controller()
 export class ProductsController {
@@ -31,7 +56,11 @@ export class ProductsController {
   @Public()
   @Get("products")
   async findAll(@Query() query: QueryProductDto) {
-    return this.productsService.findAll(query, true);
+    const result = await this.productsService.findAll(query, true);
+    return {
+      ...result,
+      items: result.items.map((item) => this.toPublicListItem(item)),
+    };
   }
 
   // ============================================================
@@ -41,7 +70,63 @@ export class ProductsController {
   @Public()
   @Get("products/:slug")
   async findBySlug(@Param("slug") slug: string) {
-    return this.productsService.findBySlug(slug);
+    const product = await this.productsService.findBySlug(slug);
+    return this.toPublicDetail(product);
+  }
+
+  // ============================================================
+  // DTO 转换方法（公开接口专用）
+  // ============================================================
+  private toPublicListItem(
+    product: PublicProductSource,
+  ): PublicProductListItemDto {
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      shortDescription: product.shortDescription,
+      price: product.price,
+      ageMin: product.ageMin,
+      ageMax: product.ageMax,
+      playEnvironment: product.playEnvironment,
+      category: product.category ?? null,
+      createdAt: product.createdAt,
+    };
+  }
+
+  private toPublicDetail(product: PublicProductSource): PublicProductDetailDto {
+    // 安全提取 features
+    let features: string[] = [];
+    if (Array.isArray(product.features)) {
+      features = product.features as string[];
+    } else if (product.features && typeof product.features === "object") {
+      // 如果是对象，尝试转换
+      features = Object.values(product.features).filter(
+        (v): v is string => typeof v === "string",
+      );
+    }
+
+    // 安全提取 specifications
+    let specifications: Record<string, unknown> = {};
+    if (product.specifications && typeof product.specifications === "object") {
+      specifications = product.specifications as Record<string, unknown>;
+    }
+
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      shortDescription: product.shortDescription,
+      description: product.description || "",
+      price: product.price,
+      ageMin: product.ageMin,
+      ageMax: product.ageMax,
+      playEnvironment: product.playEnvironment,
+      features,
+      specifications,
+      category: product.category ?? null,
+      createdAt: product.createdAt,
+    };
   }
 
   // ============================================================
@@ -101,5 +186,31 @@ export class ProductsController {
   @Roles(UserRole.ADMIN)
   async publish(@Param("id", ParseIntPipe) id: number) {
     return this.productsService.publish(id);
+  }
+
+  // ============================================================
+  // Dealer 商品目录
+  // GET /api/v1/dealer/products
+  // ============================================================
+  @Get("dealer/products")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.DEALER)
+  async getDealerProducts(@Query() query: QueryProductDto) {
+    const result = await this.productsService.findAll(query, false);
+    // 返回包含 dealerPrice 的版本，但不含 stock/reserved
+    return result;
+  }
+
+  // ============================================================
+  // Admin 商品管理
+  // GET /api/v1/admin/products
+  // ============================================================
+  @Get("admin/products")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async getAdminProducts(@Query() query: QueryProductDto) {
+    const result = await this.productsService.findAll(query, false);
+    // 返回完整信息，包含所有字段
+    return result;
   }
 }

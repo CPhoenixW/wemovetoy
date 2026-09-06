@@ -15,6 +15,7 @@ import { VariantsService } from "./variants.service";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
+import { Public } from "../common/decorators/public.decorator";
 import { CreateVariantDto } from "./dto/create-variant.dto";
 import { UpdateVariantDto } from "./dto/update-variant.dto";
 
@@ -26,24 +27,43 @@ interface RequestWithUser extends Request {
   };
 }
 
-@Controller("api/v1")
+@Controller("variants")
 export class VariantsController {
   constructor(private readonly variantsService: VariantsService) {}
 
-  // ===== 公开/登录用户均可访问的 SKU 查询（合并路由） =====
-  @Get("products/skus/:sku")
-  async getVariantBySku(
-    @Param("sku") sku: string,
-    @Request() req: RequestWithUser,
-  ) {
-    // 判断是否登录且有经销商/管理员角色
-    const isDealer =
-      req.user?.role === UserRole.DEALER || req.user?.role === UserRole.ADMIN;
-    return this.variantsService.getVariantBySku(sku, isDealer);
+  // ============================================================
+  // 公开 SKU 查询：普通用户只能看到价格（不含 dealerPrice）、是否可购买
+  // GET /api/v1/variants/:sku
+  // ============================================================
+  @Get(":sku")
+  @Public()
+  async getPublicVariant(@Param("sku") sku: string) {
+    const variant = await this.variantsService.getVariantBySku(sku, false);
+    // 只返回公开字段
+    return {
+      sku: variant.sku,
+      name: variant.name,
+      price: variant.price,
+      isPurchasable: variant.isPurchasable,
+    };
   }
 
-  // ===== 登录用户专用接口 =====
-  @Post("products/skus/batch")
+  // ============================================================
+  // 经销商/管理员查询：返回完整信息（含 dealerPrice、库存等）
+  // GET /api/v1/variants/dealer/:sku
+  // ============================================================
+  @Get("dealer/:sku")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.DEALER, UserRole.ADMIN)
+  async getDealerVariant(@Param("sku") sku: string) {
+    return this.variantsService.getVariantBySku(sku, true);
+  }
+
+  // ============================================================
+  // 批量查询 SKU（登录用户）
+  // POST /api/v1/variants/batch
+  // ============================================================
+  @Post("batch")
   @UseGuards(JwtAuthGuard)
   async getVariantsBySkus(
     @Body() body: { skus: string[] },
@@ -58,21 +78,32 @@ export class VariantsController {
     return { items: Array.from(result.values()) };
   }
 
-  @Post("products/skus/check-stock")
+  // ============================================================
+  // 校验库存（登录用户）
+  // POST /api/v1/variants/check-stock
+  // ============================================================
+  @Post("check-stock")
   @UseGuards(JwtAuthGuard)
   async checkStock(@Body() body: { sku: string; quantity: number }) {
     return this.variantsService.checkStock(body.sku, body.quantity);
   }
 
-  // ===== 后台管理接口（仅管理员） =====
-  @Post("admin/variants")
+  // ============================================================
+  // 后台管理接口：创建变体（仅管理员）
+  // POST /api/v1/variants/admin
+  // ============================================================
+  @Post("admin")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async createVariant(@Body() input: CreateVariantDto) {
     return this.variantsService.createVariant(input);
   }
 
-  @Patch("admin/variants/:id")
+  // ============================================================
+  // 后台管理接口：更新变体（仅管理员）
+  // PATCH /api/v1/variants/admin/:id
+  // ============================================================
+  @Patch("admin/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async updateVariant(
@@ -82,7 +113,11 @@ export class VariantsController {
     return this.variantsService.updateVariant(id, input);
   }
 
-  @Delete("admin/variants/:id")
+  // ============================================================
+  // 后台管理接口：删除变体（仅管理员）
+  // DELETE /api/v1/variants/admin/:id
+  // ============================================================
+  @Delete("admin/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   async deleteVariant(@Param("id", ParseIntPipe) id: number) {
