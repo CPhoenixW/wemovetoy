@@ -15,16 +15,18 @@ export class PublicProductListItemDto {
   createdAt!: Date;
 }
 
+export class PublicProductVariantDto {
+  id!: number;
+  sku!: string;
+  name!: string;
+  options!: Record<string, unknown> | null;
+  price!: number;
+  isPurchasable!: boolean;
+}
+
 export class PublicProductDetailDto extends PublicProductListItemDto {
   description!: string;
   features!: string[];
   specifications!: Record<string, unknown>;
-  variants!: Array<{
-    id: number;
-    sku: string;
-    name: string;
-    options: Record<string, string> | null;
-    price: number;
-    stock: number;
-  }>;
+  variants!: PublicProductVariantDto[];
 }
