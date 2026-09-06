@@ -38,6 +38,7 @@ export interface SafeProductWithRelations extends SafeProduct {
     | "price"
     | "dealerPrice"
     | "stock"
+    | "reserved"
     | "status"
   >[];
 }
@@ -60,5 +61,38 @@ export function toSafeProduct(product: Product): SafeProduct {
     categoryId: product.categoryId,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt,
+  };
+}
+
+// 公开商品类型（不含 dealerPrice，供匿名用户使用）
+export interface PublicSafeProduct {
+  id: number;
+  name: string;
+  slug: string;
+  shortDescription: string;
+  description: string;
+  price: number;
+  ageMin: number | null;
+  ageMax: number | null;
+  playEnvironment: string | null;
+  features: Prisma.JsonValue;
+  specifications: Prisma.JsonValue;
+  createdAt: Date;
+}
+
+export function toPublicSafeProduct(product: Product): PublicSafeProduct {
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    shortDescription: product.shortDescription,
+    description: product.description,
+    price: product.price.toNumber(),
+    ageMin: product.ageMin,
+    ageMax: product.ageMax,
+    playEnvironment: product.playEnvironment,
+    features: product.features,
+    specifications: product.specifications,
+    createdAt: product.createdAt,
   };
 }
