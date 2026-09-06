@@ -19,4 +19,12 @@ export class PublicProductDetailDto extends PublicProductListItemDto {
   description!: string;
   features!: string[];
   specifications!: Record<string, unknown>;
+  variants!: Array<{
+    id: number;
+    sku: string;
+    name: string;
+    options: Record<string, string> | null;
+    price: number;
+    stock: number;
+  }>;
 }

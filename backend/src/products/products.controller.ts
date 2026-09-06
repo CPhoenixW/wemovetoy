@@ -24,7 +24,6 @@ import {
   PublicProductDetailDto,
 } from "./dto/public-product.dto";
 
-// 兼容类型：处理实际返回的数据结构
 type PublicProductSource = {
   id: number;
   name: string;
@@ -42,6 +41,14 @@ type PublicProductSource = {
     name: string;
     slug: string;
   } | null;
+  variants?: Array<{
+    id: number;
+    sku: string;
+    name: string;
+    options: Record<string, string> | null;
+    price: number;
+    stock: number;
+  }>;
   createdAt: Date;
 };
 
@@ -71,7 +78,7 @@ export class ProductsController {
   @Get("products/:slug")
   async findBySlug(@Param("slug") slug: string) {
     const product = await this.productsService.findBySlug(slug);
-    return this.toPublicDetail(product);
+    return this.toPublicDetail(product as unknown as PublicProductSource);
   }
 
   // ============================================================
@@ -125,6 +132,7 @@ export class ProductsController {
       features,
       specifications,
       category: product.category ?? null,
+      variants: product.variants || [],
       createdAt: product.createdAt,
     };
   }
