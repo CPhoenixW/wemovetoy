@@ -1,9 +1,9 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { setCurrentUser, setToken } from "@/lib/api/auth";
 import { ApiError, apiRequest } from "@/lib/api/client";
 import type { LoginResult } from "@/lib/api/types";
+import { storeAuth } from "@/lib/auth-storage";
 
 export default function LoginPage() {
   const [error, setError] = useState<string>();
@@ -23,8 +23,7 @@ export default function LoginPage() {
           password: form.get("password"),
         }),
       });
-      setToken(result.accessToken);
-      setCurrentUser(result.user);
+      storeAuth(result.accessToken, result.user);
       const homeByRole: Record<string, string> = {
         ADMIN: "/admin",
         DEALER: "/dealer",

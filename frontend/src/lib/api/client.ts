@@ -29,11 +29,22 @@ export async function apiRequest<T>(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${apiBaseUrl}/${path.replace(/^\//, "")}`, {
-    ...init,
-    headers,
-  });
-  const payload = (await response.json()) as ApiSuccess<T> | ApiFailure;
+  let response: Response;
+  try {
+    response = await fetch(`${apiBaseUrl}/${path.replace(/^\//, "")}`, {
+      ...init,
+      headers,
+    });
+  } catch {
+    throw new ApiError("Unable to reach the server", 0);
+  }
+
+  let payload: ApiSuccess<T> | ApiFailure;
+  try {
+    payload = (await response.json()) as ApiSuccess<T> | ApiFailure;
+  } catch {
+    throw new ApiError(`Unexpected response (${response.status})`, response.status);
+  }
 
   if (!response.ok || !payload.success) {
     if (response.status === 401) {

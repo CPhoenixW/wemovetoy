@@ -27,27 +27,14 @@ export default async function ProductDetailPage({
 }: ProductDetailPageProps) {
   const { slug } = await params;
 
-  let product: ProductDetail | undefined;
-  let error: string | undefined;
+  let product: ProductDetail;
   try {
     product = await getProductBySlug(slug);
   } catch (caught) {
     if (caught instanceof ApiError && caught.status === 404) {
       notFound();
     }
-    error =
-      caught instanceof ApiError ? caught.message : "Unable to load product";
-  }
-
-  if (!product) {
-    return (
-      <section className="page-shell">
-        <p className="form-error">{error ?? "Product not found"}</p>
-        <p className="back-link">
-          <Link href="/products">← Back to products</Link>
-        </p>
-      </section>
-    );
+    throw caught;
   }
 
   const ageRange = formatAgeRange(product.ageMin, product.ageMax);

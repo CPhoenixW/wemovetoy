@@ -1013,3 +1013,56 @@ button:disabled { cursor: wait; opacity: 0.7; }
 @media (max-width: 800px) {
   .product-detail { grid-template-columns: 1fr; }
 }
+
+/* ---- 加载骨架屏 ---- */
+
+.skeleton {
+  background: linear-gradient(90deg, #e6ebe9 25%, #f3f5f3 50%, #e6ebe9 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton--price { height: 22px; width: 64px; }
+.skeleton--name { height: 18px; width: 70%; }
+.skeleton--desc { height: 14px; width: 100%; }
+.skeleton--title { height: 32px; width: 55%; }
+.skeleton--line { height: 20px; width: 34%; margin-top: 12px; }
+.skeleton--block { height: 240px; margin-top: 24px; }
+
+/* ---- 失败重试与头部账户 ---- */
+
+.retry-button { margin-top: 16px; }
+
+.account-name {
+  color: #60706a;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link-button {
+  background: none;
+  border: none;
+  color: #005f57;
+  cursor: pointer;
+  font: inherit;
+  min-height: 0;
+  padding: 0;
+}
+.link-button:hover { text-decoration: underline; }
+
+/* ---- 移动端适配 ---- */
+
+@media (max-width: 640px) {
+  .site-header { flex-wrap: wrap; gap: 8px; min-height: auto; padding: 12px 20px; }
+  .site-header nav { flex-wrap: wrap; gap: 14px; }
+  .search-form { max-width: none; }
+  .sort-bar { gap: 14px; overflow-x: auto; white-space: nowrap; }
+  .pagination { flex-wrap: wrap; }
+  .product-detail__main { padding: 20px; }
+  .product-detail__price { font-size: 26px; }
+}
