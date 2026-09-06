@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { setCurrentUser, setToken } from "@/lib/api/auth";
 import { ApiError, apiRequest } from "@/lib/api/client";
 import type { LoginResult } from "@/lib/api/types";
 
@@ -22,9 +23,14 @@ export default function LoginPage() {
           password: form.get("password"),
         }),
       });
-      sessionStorage.setItem("wemove.accessToken", result.accessToken);
-      sessionStorage.setItem("wemove.user", JSON.stringify(result.user));
-      window.location.assign("/products");
+      setToken(result.accessToken);
+      setCurrentUser(result.user);
+      const homeByRole: Record<string, string> = {
+        ADMIN: "/admin",
+        DEALER: "/dealer",
+        USER: "/products",
+      };
+      window.location.assign(homeByRole[result.user.role] ?? "/products");
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError ? caughtError.message : "Unable to sign in",

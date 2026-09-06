@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { clearToken, getMe, getToken, setCurrentUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { createDealerApplication, listMyApplications } from "@/lib/api/dealers";
 import type {
   CreateDealerApplicationInput,
   DealerApplication,
 } from "@/lib/api/types";
-import { getStoredToken } from "@/lib/auth-storage";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 type AuthState = "checking" | "anonymous" | "authed";
 
@@ -20,7 +21,6 @@ const STATUS_LABEL: Record<DealerApplication["status"], string> = {
 
 export default function DealerApplyPage() {
   const [auth, setAuth] = useState<AuthState>("checking");
-  const [token, setToken] = useState<string | null>(null);
   const [applications, setApplications] = useState<DealerApplication[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -28,20 +28,37 @@ export default function DealerApplyPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const stored = getStoredToken();
-    if (!stored) {
+    let cancelled = false;
+
+    if (!getToken()) {
       setAuth("anonymous");
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
-    setToken(stored);
-    setAuth("authed");
-    void loadApplications(stored);
+
+    getMe()
+      .then((user) => {
+        if (cancelled) return;
+        setCurrentUser(user);
+        setAuth("authed");
+        void loadApplications();
+      })
+      .catch(() => {
+        if (cancelled) return;
+        clearToken();
+        setAuth("anonymous");
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function loadApplications(accessToken: string) {
+  async function loadApplications() {
     setLoadingApps(true);
     try {
-      setApplications(await listMyApplications(accessToken));
+      setApplications(await listMyApplications());
     } catch {
       // 申请记录拉取失败不阻塞表单提交
     } finally {
@@ -51,7 +68,6 @@ export default function DealerApplyPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token) return;
     setError(undefined);
     setSuccess(false);
     setSubmitting(true);
@@ -70,10 +86,10 @@ export default function DealerApplyPage() {
     if (taxId) input.taxId = taxId;
 
     try {
-      await createDealerApplication(token, input);
+      await createDealerApplication(input);
       setSuccess(true);
       event.currentTarget.reset();
-      await loadApplications(token);
+      await loadApplications();
     } catch (caught) {
       setError(
         caught instanceof ApiError
@@ -88,9 +104,9 @@ export default function DealerApplyPage() {
   if (auth === "checking") {
     return (
       <section aria-busy="true" className="page-shell">
-        <div className="skeleton skeleton--title" />
-        <div className="skeleton skeleton--line" />
-        <div className="skeleton skeleton--block" />
+        <div className="dealer-application__skeleton dealer-application__skeleton--title" />
+        <div className="dealer-application__skeleton dealer-application__skeleton--line" />
+        <div className="dealer-application__skeleton dealer-application__skeleton--block" />
       </section>
     );
   }
@@ -100,7 +116,7 @@ export default function DealerApplyPage() {
       <section className="page-shell auth-panel">
         <p className="eyebrow">Dealer</p>
         <h1>Become a dealer</h1>
-        <p className="empty-state">
+        <p className="dealer-application__empty">
           Please <Link href="/login">sign in</Link> to apply as a dealer.
         </p>
       </section>
@@ -115,11 +131,11 @@ export default function DealerApplyPage() {
       <h1>Become a dealer</h1>
 
       {hasPending ? (
-        <p className="notice">
+        <p className="dealer-application__notice">
           You already have a pending application. We will review it shortly.
         </p>
       ) : (
-        <form className="dealer-form" onSubmit={submit}>
+        <form className="dealer-application__form" onSubmit={submit}>
           <label>
             Company name
             <input
@@ -151,7 +167,9 @@ export default function DealerApplyPage() {
           </label>
           {error ? <p className="form-error">{error}</p> : null}
           {success ? (
-            <p className="form-success">Application submitted successfully.</p>
+            <p className="dealer-application__success">
+              Application submitted successfully.
+            </p>
           ) : null}
           <button disabled={submitting} type="submit">
             {submitting ? "Submitting" : "Submit application"}
@@ -159,35 +177,34 @@ export default function DealerApplyPage() {
         </form>
       )}
 
-      <section className="application-list">
+      <section className="dealer-application__list">
         <h2>My applications</h2>
         {loadingApps ? (
-          <p className="empty-state">Loading…</p>
+          <p className="dealer-application__empty">Loading...</p>
         ) : applications.length > 0 ? (
-          <ul className="application-list__items">
+          <ul className="dealer-application__items">
             {applications.map((app) => (
               <li key={app.id}>
-                <div className="application-list__head">
-                  <span className="application-list__company">
+                <div className="dealer-application__item-head">
+                  <span className="dealer-application__company">
                     {app.companyName}
                   </span>
-                  <span
-                    className={`status-badge status-badge--${app.status.toLowerCase()}`}
-                  >
-                    {STATUS_LABEL[app.status]}
-                  </span>
+                  <StatusBadge
+                    label={STATUS_LABEL[app.status]}
+                    status={app.status}
+                  />
                 </div>
                 {app.reviewNote ? (
-                  <p className="application-list__note">{app.reviewNote}</p>
+                  <p className="dealer-application__note">{app.reviewNote}</p>
                 ) : null}
-                <p className="application-list__date">
+                <p className="dealer-application__date">
                   Submitted {new Date(app.createdAt).toLocaleDateString()}
                 </p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="empty-state">No applications yet.</p>
+          <p className="dealer-application__empty">No applications yet.</p>
         )}
       </section>
     </section>

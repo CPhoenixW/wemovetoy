@@ -54,6 +54,8 @@ test("WEMOVE cross-module API smoke", async (t) => {
   let userToken;
   let outsiderToken;
   let adminToken;
+  let dealerToken;
+  let variantSku;
 
   await t.test(
     "health, Swagger and public product APIs are reachable",
@@ -73,6 +75,23 @@ test("WEMOVE cross-module API smoke", async (t) => {
         "seed should provide at least one product",
       );
       product = products.json.data.items[0];
+      assert.deepEqual(Object.keys(product).sort(), [
+        "ageMax",
+        "ageMin",
+        "category",
+        "createdAt",
+        "features",
+        "id",
+        "name",
+        "playEnvironment",
+        "price",
+        "shortDescription",
+        "slug",
+        "specifications",
+      ]);
+
+      const statusQuery = await request("/products?status=DRAFT");
+      expectApiResponse(statusQuery, 400, false);
 
       const detail = await request(
         `/products/${encodeURIComponent(product.slug)}`,
@@ -80,6 +99,16 @@ test("WEMOVE cross-module API smoke", async (t) => {
       expectApiResponse(detail, 200, true);
       assert.equal(detail.json.data.slug, product.slug);
       assert.ok(Array.isArray(detail.json.data.variants));
+      assert.ok(detail.json.data.variants.length >= 1);
+
+      const variant = detail.json.data.variants[0];
+      variantSku = variant.sku;
+      assert.deepEqual(
+        Object.keys(variant).sort(),
+        ["id", "isPurchasable", "name", "options", "price", "sku"],
+      );
+      assert.equal(typeof variant.price, "number");
+      assert.equal(typeof variant.isPurchasable, "boolean");
     },
   );
 
@@ -116,7 +145,7 @@ test("WEMOVE cross-module API smoke", async (t) => {
       const adminPing = await request("/admin/ping", { token: adminToken });
       expectApiResponse(adminPing, 200, true);
 
-      const dealerToken = await login("dealer@wemove.local");
+      dealerToken = await login("dealer@wemove.local");
       const dealerPing = await request("/dealer/ping", { token: dealerToken });
       expectApiResponse(dealerPing, 200, true);
 
@@ -127,6 +156,159 @@ test("WEMOVE cross-module API smoke", async (t) => {
         },
       );
       expectApiResponse(adminProductWithUser, 403, false);
+    },
+  );
+
+  await t.test(
+    "authenticated SKU and Dealer product APIs enforce their contracts",
+    async () => {
+      const anonymousVariant = await request(
+        `/variants/${encodeURIComponent(variantSku)}`,
+      );
+      expectApiResponse(anonymousVariant, 401, false);
+
+      const userVariant = await request(
+        `/variants/${encodeURIComponent(variantSku)}`,
+        { token: userToken },
+      );
+      expectApiResponse(userVariant, 200, true);
+      assert.deepEqual(
+        Object.keys(userVariant.json.data).sort(),
+        [
+          "id",
+          "isPurchasable",
+          "name",
+          "options",
+          "productId",
+          "productName",
+          "sku",
+          "unitPrice",
+        ],
+      );
+
+      const dealerVariant = await request(
+        `/variants/${encodeURIComponent(variantSku)}`,
+        { token: dealerToken },
+      );
+      expectApiResponse(dealerVariant, 200, true);
+      assert.equal(typeof dealerVariant.json.data.availableStock, "number");
+      assert.ok(
+        dealerVariant.json.data.unitPrice < userVariant.json.data.unitPrice,
+        "seed Dealer price should be lower than retail price",
+      );
+      for (const field of ["dealerPrice", "stock", "reserved", "status"]) {
+        assert.equal(
+          dealerVariant.json.data[field],
+          undefined,
+          `Dealer SKU leaked ${field}`,
+        );
+      }
+
+      const batch = await request("/variants/batch", {
+        method: "POST",
+        token: userToken,
+        body: { skus: [variantSku] },
+      });
+      expectApiResponse(batch, 200, true);
+      assert.equal(batch.json.data.items.length, 1);
+      assert.equal(batch.json.data.items[0].availableStock, undefined);
+
+      const missingSku = `e2e-missing-${runId}`;
+      const incompleteBatch = await request("/variants/batch", {
+        method: "POST",
+        token: userToken,
+        body: { skus: [variantSku, missingSku] },
+      });
+      expectApiResponse(incompleteBatch, 404, false);
+
+      const stockProbe = await request("/variants/check-stock", {
+        method: "POST",
+        token: userToken,
+        body: { sku: variantSku, quantity: 1 },
+      });
+      expectApiResponse(stockProbe, 404, false);
+
+      const draftSlug = `e2e-draft-${runId}`;
+      const draftProduct = await request("/admin/products", {
+        method: "POST",
+        token: adminToken,
+        body: {
+          name: "E2E Draft Product",
+          slug: draftSlug,
+          shortDescription: "Must not be public",
+          description: "This draft is created only to verify public filtering.",
+          price: 19.99,
+        },
+      });
+      expectApiResponse(draftProduct, 201, true);
+
+      const publicDraft = await request(
+        `/products/${encodeURIComponent(draftSlug)}`,
+      );
+      expectApiResponse(publicDraft, 404, false);
+
+      const anonymousDealerCatalog = await request("/dealer/products");
+      expectApiResponse(anonymousDealerCatalog, 401, false);
+
+      const userDealerCatalog = await request("/dealer/products", {
+        token: userToken,
+      });
+      expectApiResponse(userDealerCatalog, 403, false);
+
+      const dealerCatalog = await request("/dealer/products", {
+        token: dealerToken,
+      });
+      expectApiResponse(dealerCatalog, 200, true);
+      const dealerProduct = dealerCatalog.json.data.items[0];
+      assert.deepEqual(
+        Object.keys(dealerProduct).sort(),
+        [
+          "ageMax",
+          "ageMin",
+          "category",
+          "dealerPrice",
+          "id",
+          "name",
+          "playEnvironment",
+          "retailPrice",
+          "shortDescription",
+          "slug",
+          "variants",
+        ],
+      );
+      assert.ok(dealerProduct.variants.length >= 1);
+      assert.deepEqual(
+        Object.keys(dealerProduct.variants[0]).sort(),
+        [
+          "availableStock",
+          "id",
+          "isPurchasable",
+          "name",
+          "sku",
+          "unitPrice",
+        ],
+      );
+
+      const inactiveSku = `e2e-inactive-${runId}`;
+      const inactiveVariant = await request("/variants/admin", {
+        method: "POST",
+        token: adminToken,
+        body: {
+          productId: product.id,
+          sku: inactiveSku,
+          name: "E2E Inactive Variant",
+          price: 9.99,
+          stock: 5,
+          status: "INACTIVE",
+        },
+      });
+      expectApiResponse(inactiveVariant, 201, true);
+
+      const unavailableVariant = await request(
+        `/variants/${encodeURIComponent(inactiveSku)}`,
+        { token: userToken },
+      );
+      expectApiResponse(unavailableVariant, 400, false);
     },
   );
 

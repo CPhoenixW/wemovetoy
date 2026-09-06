@@ -4,7 +4,7 @@ export class VariantResponseDto {
   id!: number;
   sku!: string;
   name!: string;
-  options!: Record<string, string> | null;
+  options!: Record<string, unknown> | null;
   price!: number;
   dealerPrice!: number | null;
   stock!: number;

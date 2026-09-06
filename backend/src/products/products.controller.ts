@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import { ProductsService } from "./products.service";
 import { CreateProductDto } from "./dto/create-product.dto";
+import { PublicQueryProductDto } from "./dto/public-query-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { QueryProductDto } from "./dto/query-product.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
@@ -19,7 +20,43 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { Public } from "../common/decorators/public.decorator";
 import { UserRole } from "@prisma/client";
+import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
+import {
+  PublicProductListItemDto,
+  PublicProductDetailDto,
+  PublicProductVariantDto,
+} from "./dto/public-product.dto";
 
+type PublicProductSource = {
+  id: number;
+  name: string;
+  slug: string;
+  shortDescription: string;
+  description?: string;
+  price: number;
+  ageMin: number | null;
+  ageMax: number | null;
+  playEnvironment: string | null;
+  features?: unknown;
+  specifications?: unknown;
+  category?: {
+    id: number;
+    name: string;
+    slug: string;
+  } | null;
+  variants?: Array<{
+    id: number;
+    sku: string;
+    name: string;
+    options: unknown;
+    price: { toNumber(): number };
+    stock: number;
+    reserved: number;
+  }>;
+  createdAt: Date;
+};
+
+@ApiTags("products")
 @Controller()
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -30,8 +67,13 @@ export class ProductsController {
   // ============================================================
   @Public()
   @Get("products")
-  async findAll(@Query() query: QueryProductDto) {
-    return this.productsService.findAll(query);
+  @ApiOperation({ summary: "List public active products" })
+  async findAll(@Query() query: PublicQueryProductDto) {
+    const result = await this.productsService.findAll(query, true);
+    return {
+      ...result,
+      items: result.items.map((item) => this.toPublicListItem(item)),
+    };
   }
 
   // ============================================================
@@ -40,8 +82,92 @@ export class ProductsController {
   // ============================================================
   @Public()
   @Get("products/:slug")
+  @ApiOperation({ summary: "Get a public active product by slug" })
   async findBySlug(@Param("slug") slug: string) {
-    return this.productsService.findBySlug(slug);
+    const product = await this.productsService.findBySlug(slug);
+    return this.toPublicDetail(product);
+  }
+
+  // ============================================================
+  // DTO 转换方法（公开接口专用）
+  // ============================================================
+  private toPublicListItem(
+    product: PublicProductSource,
+  ): PublicProductListItemDto {
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      shortDescription: product.shortDescription,
+      price: product.price,
+      ageMin: product.ageMin,
+      ageMax: product.ageMax,
+      playEnvironment: product.playEnvironment,
+      features: this.toPublicFeatures(product.features),
+      specifications: this.toPublicSpecifications(product.specifications),
+      category: product.category ?? null,
+      createdAt: product.createdAt,
+    };
+  }
+
+  private toPublicDetail(product: PublicProductSource): PublicProductDetailDto {
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      shortDescription: product.shortDescription,
+      description: product.description || "",
+      price: product.price,
+      ageMin: product.ageMin,
+      ageMax: product.ageMax,
+      playEnvironment: product.playEnvironment,
+      features: this.toPublicFeatures(product.features),
+      specifications: this.toPublicSpecifications(product.specifications),
+      variants: (product.variants ?? []).map((variant) =>
+        this.toPublicVariant(variant),
+      ),
+      category: product.category ?? null,
+      createdAt: product.createdAt,
+    };
+  }
+
+  private toPublicVariant(
+    variant: NonNullable<PublicProductSource["variants"]>[number],
+  ): PublicProductVariantDto {
+    const options =
+      variant.options &&
+      typeof variant.options === "object" &&
+      !Array.isArray(variant.options)
+        ? (variant.options as Record<string, unknown>)
+        : null;
+
+    return {
+      id: variant.id,
+      sku: variant.sku,
+      name: variant.name,
+      options,
+      price: variant.price.toNumber(),
+      isPurchasable: variant.stock - variant.reserved > 0,
+    };
+  }
+
+  private toPublicFeatures(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === "string");
+    }
+    if (value && typeof value === "object") {
+      return Object.values(value).filter(
+        (item): item is string => typeof item === "string",
+      );
+    }
+    return [];
+  }
+
+  private toPublicSpecifications(value: unknown): Record<string, unknown> {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    return {};
   }
 
   // ============================================================
@@ -51,6 +177,8 @@ export class ProductsController {
   @Get("admin/products/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get a product with management fields (admin)" })
   async findOne(@Param("id", ParseIntPipe) id: number) {
     return this.productsService.findOne(id);
   }
@@ -62,6 +190,8 @@ export class ProductsController {
   @Post("admin/products")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Create a draft product (admin)" })
   async create(@Body() input: CreateProductDto) {
     return this.productsService.create(input);
   }
@@ -73,6 +203,8 @@ export class ProductsController {
   @Patch("admin/products/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Update a product (admin)" })
   async update(
     @Param("id", ParseIntPipe) id: number,
     @Body() input: UpdateProductDto,
@@ -87,6 +219,8 @@ export class ProductsController {
   @Delete("admin/products/:id")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Soft-delete a product (admin)" })
   async remove(@Param("id", ParseIntPipe) id: number) {
     await this.productsService.remove(id);
     return { message: "Product deleted successfully" };
@@ -99,7 +233,37 @@ export class ProductsController {
   @Post("admin/products/:id/publish")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Publish a product (admin)" })
   async publish(@Param("id", ParseIntPipe) id: number) {
     return this.productsService.publish(id);
+  }
+
+  // ============================================================
+  // Dealer 商品目录
+  // GET /api/v1/dealer/products
+  // ============================================================
+  @Get("dealer/products")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.DEALER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "List dealer-visible active products" })
+  async getDealerProducts(@Query() query: PublicQueryProductDto) {
+    return this.productsService.findDealerProducts(query);
+  }
+
+  // ============================================================
+  // Admin 商品管理
+  // GET /api/v1/admin/products
+  // ============================================================
+  @Get("admin/products")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "List products with management fields (admin)" })
+  async getAdminProducts(@Query() query: QueryProductDto) {
+    const result = await this.productsService.findAll(query, false);
+    // 返回完整信息，包含所有字段
+    return result;
   }
 }
