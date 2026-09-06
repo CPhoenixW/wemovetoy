@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import { ProductsService } from "./products.service";
 import { CreateProductDto } from "./dto/create-product.dto";
+import { PublicQueryProductDto } from "./dto/public-query-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { QueryProductDto } from "./dto/query-product.dto";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
@@ -64,7 +65,7 @@ export class ProductsController {
   // ============================================================
   @Public()
   @Get("products")
-  async findAll(@Query() query: QueryProductDto) {
+  async findAll(@Query() query: PublicQueryProductDto) {
     const result = await this.productsService.findAll(query, true);
     return {
       ...result,
@@ -98,29 +99,14 @@ export class ProductsController {
       ageMin: product.ageMin,
       ageMax: product.ageMax,
       playEnvironment: product.playEnvironment,
+      features: this.toPublicFeatures(product.features),
+      specifications: this.toPublicSpecifications(product.specifications),
       category: product.category ?? null,
       createdAt: product.createdAt,
     };
   }
 
   private toPublicDetail(product: PublicProductSource): PublicProductDetailDto {
-    // 安全提取 features
-    let features: string[] = [];
-    if (Array.isArray(product.features)) {
-      features = product.features as string[];
-    } else if (product.features && typeof product.features === "object") {
-      // 如果是对象，尝试转换
-      features = Object.values(product.features).filter(
-        (v): v is string => typeof v === "string",
-      );
-    }
-
-    // 安全提取 specifications
-    let specifications: Record<string, unknown> = {};
-    if (product.specifications && typeof product.specifications === "object") {
-      specifications = product.specifications as Record<string, unknown>;
-    }
-
     return {
       id: product.id,
       name: product.name,
@@ -131,8 +117,8 @@ export class ProductsController {
       ageMin: product.ageMin,
       ageMax: product.ageMax,
       playEnvironment: product.playEnvironment,
-      features,
-      specifications,
+      features: this.toPublicFeatures(product.features),
+      specifications: this.toPublicSpecifications(product.specifications),
       variants: (product.variants ?? []).map((variant) =>
         this.toPublicVariant(variant),
       ),
@@ -159,6 +145,25 @@ export class ProductsController {
       price: variant.price.toNumber(),
       isPurchasable: variant.stock - variant.reserved > 0,
     };
+  }
+
+  private toPublicFeatures(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === "string");
+    }
+    if (value && typeof value === "object") {
+      return Object.values(value).filter(
+        (item): item is string => typeof item === "string",
+      );
+    }
+    return [];
+  }
+
+  private toPublicSpecifications(value: unknown): Record<string, unknown> {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    return {};
   }
 
   // ============================================================
@@ -227,10 +232,8 @@ export class ProductsController {
   @Get("dealer/products")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.DEALER)
-  async getDealerProducts(@Query() query: QueryProductDto) {
-    const result = await this.productsService.findAll(query, false);
-    // 返回包含 dealerPrice 的版本，但不含 stock/reserved
-    return result;
+  async getDealerProducts(@Query() query: PublicQueryProductDto) {
+    return this.productsService.findDealerProducts(query);
   }
 
   // ============================================================

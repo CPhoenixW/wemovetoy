@@ -75,18 +75,24 @@ export interface PublicSafeProduct {
   ageMin: number | null;
   ageMax: number | null;
   playEnvironment: string | null;
-  status: ProductStatus;
   features: Prisma.JsonValue;
   specifications: Prisma.JsonValue;
-  categoryId: number | null;
   createdAt: Date;
-  updatedAt: Date;
 }
 
-// 在 toSafeProduct 基础上增加过滤 dealerPrice 的函数
 export function toPublicSafeProduct(product: Product): PublicSafeProduct {
-  const safe = toSafeProduct(product);
-  const { dealerPrice, ...publicProduct } = safe;
-  void dealerPrice;
-  return publicProduct;
+  return {
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    shortDescription: product.shortDescription,
+    description: product.description,
+    price: product.price.toNumber(),
+    ageMin: product.ageMin,
+    ageMax: product.ageMax,
+    playEnvironment: product.playEnvironment,
+    features: product.features,
+    specifications: product.specifications,
+    createdAt: product.createdAt,
+  };
 }

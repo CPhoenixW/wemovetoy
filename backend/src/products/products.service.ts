@@ -4,8 +4,10 @@ import {
   ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { Prisma, ProductStatus } from "@prisma/client";
+import { Prisma, ProductStatus, VariantStatus } from "@prisma/client";
 import { CreateProductDto } from "./dto/create-product.dto";
+import { DealerProductListItemDto } from "./dto/dealer-product.dto";
+import { PublicQueryProductDto } from "./dto/public-query-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { QueryProductDto } from "./dto/query-product.dto";
 import {
@@ -13,6 +15,7 @@ import {
   SafeProductWithRelations,
   toSafeProduct,
   PublicSafeProduct,
+  toPublicSafeProduct,
 } from "./safe-product";
 
 @Injectable()
@@ -58,44 +61,18 @@ export class ProductsService {
   // 商品列表（分页、筛选、排序）
   // ============================================================
   async findAll(
-    query: QueryProductDto,
+    query: QueryProductDto | PublicQueryProductDto,
     isPublic: boolean = false,
-    forDealer: boolean = false,
   ): Promise<{
-    items: SafeProduct[] | PublicSafeProduct[]; // 允许返回两种类型
+    items: SafeProduct[] | PublicSafeProduct[];
     total: number;
     page: number;
+    pageSize: number;
     totalPages: number;
   }> {
-    const { page = 1, limit = 20, sort, categoryId, status, search } = query;
-
-    const where: Prisma.ProductWhereInput = {
-      deletedAt: null,
-    };
-
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { shortDescription: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    if (isPublic) {
-      where.status = "ACTIVE";
-    } else if (status) {
-      where.status = status;
-    }
-
-    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: "desc" };
-    if (sort === "price_asc") orderBy = { price: "asc" };
-    else if (sort === "price_desc") orderBy = { price: "desc" };
-    else if (sort === "name_asc") orderBy = { name: "asc" };
-    else if (sort === "name_desc") orderBy = { name: "desc" };
-    else if (sort === "newest") orderBy = { createdAt: "desc" };
+    const { page = 1, limit = 20 } = query;
+    const where = this.buildProductWhere(query, isPublic);
+    const orderBy = this.buildProductOrderBy(query.sort);
 
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -111,37 +88,99 @@ export class ProductsService {
     ]);
 
     if (isPublic) {
-      // 公开：返回去除 dealerPrice 的公开 DTO（已有）
       return {
         items: items.map((item) => ({
-          ...toSafeProduct(item),
+          ...toPublicSafeProduct(item),
           category: item.category,
         })),
         total,
         page,
-        totalPages: Math.ceil(total / limit),
-      };
-    }
-
-    if (forDealer) {
-      // Dealer：返回包含 dealerPrice 但无库存的 DTO
-      return {
-        items: items.map((item) => ({
-          ...toSafeProduct(item),
-          category: item.category,
-          // 保留 dealerPrice（已在 SafeProduct 中）
-          // 库存字段不返回
-        })),
-        total,
-        page,
+        pageSize: limit,
         totalPages: Math.ceil(total / limit),
       };
     }
 
     return {
-      items: items.map(toSafeProduct),
+      items: items.map((item) => ({
+        ...toSafeProduct(item),
+        category: item.category,
+      })),
       total,
       page,
+      pageSize: limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findDealerProducts(query: PublicQueryProductDto): Promise<{
+    items: DealerProductListItemDto[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  }> {
+    const { page = 1, limit = 20 } = query;
+    const where = this.buildProductWhere(query, true);
+    const orderBy = this.buildProductOrderBy(query.sort);
+    const [items, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          category: { select: { id: true, name: true, slug: true } },
+          variants: {
+            where: { status: VariantStatus.ACTIVE },
+            select: {
+              id: true,
+              sku: true,
+              name: true,
+              price: true,
+              dealerPrice: true,
+              stock: true,
+              reserved: true,
+            },
+          },
+        },
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return {
+      items: items.map((product) => {
+        const retailPrice = product.price.toNumber();
+        return {
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          shortDescription: product.shortDescription,
+          retailPrice,
+          dealerPrice: product.dealerPrice?.toNumber() ?? retailPrice,
+          ageMin: product.ageMin,
+          ageMax: product.ageMax,
+          playEnvironment: product.playEnvironment,
+          category: product.category,
+          variants: product.variants.map((variant) => {
+            const availableStock = Math.max(
+              0,
+              variant.stock - variant.reserved,
+            );
+            return {
+              id: variant.id,
+              sku: variant.sku,
+              name: variant.name,
+              unitPrice:
+                variant.dealerPrice?.toNumber() ?? variant.price.toNumber(),
+              availableStock,
+              isPurchasable: availableStock > 0,
+            };
+          }),
+        };
+      }),
+      total,
+      page,
+      pageSize: limit,
       totalPages: Math.ceil(total / limit),
     };
   }
@@ -168,7 +207,6 @@ export class ProductsService {
             reserved: true,
             status: true,
           },
-          where: { status: "ACTIVE" },
         },
       },
     });
@@ -302,5 +340,38 @@ export class ProductsService {
     });
 
     return toSafeProduct(product);
+  }
+
+  private buildProductWhere(
+    query: QueryProductDto | PublicQueryProductDto,
+    activeOnly: boolean,
+  ): Prisma.ProductWhereInput {
+    const where: Prisma.ProductWhereInput = { deletedAt: null };
+    if (query.categoryId) {
+      where.categoryId = query.categoryId;
+    }
+    if (query.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: "insensitive" } },
+        { shortDescription: { contains: query.search, mode: "insensitive" } },
+        { description: { contains: query.search, mode: "insensitive" } },
+      ];
+    }
+    if (activeOnly) {
+      where.status = ProductStatus.ACTIVE;
+    } else if ("status" in query && query.status) {
+      where.status = query.status;
+    }
+    return where;
+  }
+
+  private buildProductOrderBy(
+    sort?: string,
+  ): Prisma.ProductOrderByWithRelationInput {
+    if (sort === "price_asc") return { price: "asc" };
+    if (sort === "price_desc") return { price: "desc" };
+    if (sort === "name_asc") return { name: "asc" };
+    if (sort === "name_desc") return { name: "desc" };
+    return { createdAt: "desc" };
   }
 }

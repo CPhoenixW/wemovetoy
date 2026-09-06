@@ -7,6 +7,8 @@ export class PublicProductListItemDto {
   ageMin!: number | null;
   ageMax!: number | null;
   playEnvironment!: string | null;
+  features!: string[];
+  specifications!: Record<string, unknown>;
   category!: {
     id: number;
     name: string;
@@ -26,7 +28,5 @@ export class PublicProductVariantDto {
 
 export class PublicProductDetailDto extends PublicProductListItemDto {
   description!: string;
-  features!: string[];
-  specifications!: Record<string, unknown>;
   variants!: PublicProductVariantDto[];
 }

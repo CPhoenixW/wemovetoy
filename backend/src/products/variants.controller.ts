@@ -17,6 +17,7 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { CreateVariantDto } from "./dto/create-variant.dto";
 import { UpdateVariantDto } from "./dto/update-variant.dto";
+import { QueryVariantsDto } from "./dto/variant-lookup.dto";
 
 interface RequestWithUser extends Request {
   user: {
@@ -30,57 +31,29 @@ interface RequestWithUser extends Request {
 export class VariantsController {
   constructor(private readonly variantsService: VariantsService) {}
 
-  // ============================================================
-  // 公开 SKU 查询：普通用户只能看到价格（不含 dealerPrice）、是否可购买
-  // GET /api/v1/variants/:sku
-  // ============================================================
-  // 单件查询：需 JWT，按角色返回对应价格（普通用户看不到 dealerPrice）
   @Get(":sku")
   @UseGuards(JwtAuthGuard)
   async getVariantBySku(
     @Param("sku") sku: string,
     @Request() req: RequestWithUser,
   ) {
-    const isDealer =
-      req.user.role === UserRole.DEALER || req.user.role === UserRole.ADMIN;
-    const variant = await this.variantsService.getVariantBySku(sku, isDealer);
-    // 返回最小响应（不含 stock/reserved）
-    return {
-      sku: variant.sku,
-      name: variant.name,
-      price: variant.price,
-      isPurchasable: variant.isPurchasable,
-    };
+    return this.variantsService.getVariantBySku(
+      sku,
+      req.user.role === UserRole.DEALER ? "DEALER" : "RETAIL",
+    );
   }
 
-  // ============================================================
-  // 经销商/管理员查询：返回完整信息（含 dealerPrice、库存等）
-  // GET /api/v1/variants/dealer/:sku
-  // ============================================================
-  @Get("dealer/:sku")
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.DEALER, UserRole.ADMIN)
-  async getDealerVariant(@Param("sku") sku: string) {
-    return this.variantsService.getVariantBySku(sku, true);
-  }
-
-  // ============================================================
-  // 批量查询 SKU（登录用户）
-  // POST /api/v1/variants/batch
-  // ============================================================
   @Post("batch")
   @UseGuards(JwtAuthGuard)
   async getVariantsBySkus(
-    @Body() body: { skus: string[] },
+    @Body() body: QueryVariantsDto,
     @Request() req: RequestWithUser,
   ) {
-    const isDealer =
-      req.user.role === UserRole.DEALER || req.user.role === UserRole.ADMIN;
-    const result = await this.variantsService.getVariantsBySkus(
+    const items = await this.variantsService.getVariantsBySkus(
       body.skus,
-      isDealer,
+      req.user.role === UserRole.DEALER ? "DEALER" : "RETAIL",
     );
-    return { items: Array.from(result.values()) };
+    return { items };
   }
 
   // ============================================================

@@ -1,10 +1,19 @@
+export class DealerProductVariantDto {
+  id!: number;
+  sku!: string;
+  name!: string;
+  unitPrice!: number;
+  availableStock!: number;
+  isPurchasable!: boolean;
+}
+
 export class DealerProductListItemDto {
   id!: number;
   name!: string;
   slug!: string;
   shortDescription!: string;
-  price!: number; // 零售价
-  dealerPrice!: number; // Dealer 价
+  retailPrice!: number;
+  dealerPrice!: number;
   ageMin!: number | null;
   ageMax!: number | null;
   playEnvironment!: string | null;
@@ -13,4 +22,5 @@ export class DealerProductListItemDto {
     name: string;
     slug: string;
   } | null;
+  variants!: DealerProductVariantDto[];
 }

@@ -54,6 +54,8 @@ test("WEMOVE cross-module API smoke", async (t) => {
   let userToken;
   let outsiderToken;
   let adminToken;
+  let dealerToken;
+  let variantSku;
 
   await t.test(
     "health, Swagger and public product APIs are reachable",
@@ -73,6 +75,17 @@ test("WEMOVE cross-module API smoke", async (t) => {
         "seed should provide at least one product",
       );
       product = products.json.data.items[0];
+      for (const field of [
+        "dealerPrice",
+        "status",
+        "categoryId",
+        "updatedAt",
+      ]) {
+        assert.equal(product[field], undefined, `public product leaked ${field}`);
+      }
+
+      const statusQuery = await request("/products?status=DRAFT");
+      expectApiResponse(statusQuery, 400, false);
 
       const detail = await request(
         `/products/${encodeURIComponent(product.slug)}`,
@@ -83,6 +96,7 @@ test("WEMOVE cross-module API smoke", async (t) => {
       assert.ok(detail.json.data.variants.length >= 1);
 
       const variant = detail.json.data.variants[0];
+      variantSku = variant.sku;
       assert.deepEqual(
         Object.keys(variant).sort(),
         ["id", "isPurchasable", "name", "options", "price", "sku"],
@@ -125,7 +139,7 @@ test("WEMOVE cross-module API smoke", async (t) => {
       const adminPing = await request("/admin/ping", { token: adminToken });
       expectApiResponse(adminPing, 200, true);
 
-      const dealerToken = await login("dealer@wemove.local");
+      dealerToken = await login("dealer@wemove.local");
       const dealerPing = await request("/dealer/ping", { token: dealerToken });
       expectApiResponse(dealerPing, 200, true);
 
@@ -136,6 +150,107 @@ test("WEMOVE cross-module API smoke", async (t) => {
         },
       );
       expectApiResponse(adminProductWithUser, 403, false);
+    },
+  );
+
+  await t.test(
+    "authenticated SKU and Dealer product APIs enforce their contracts",
+    async () => {
+      const anonymousVariant = await request(
+        `/variants/${encodeURIComponent(variantSku)}`,
+      );
+      expectApiResponse(anonymousVariant, 401, false);
+
+      const userVariant = await request(
+        `/variants/${encodeURIComponent(variantSku)}`,
+        { token: userToken },
+      );
+      expectApiResponse(userVariant, 200, true);
+      assert.deepEqual(
+        Object.keys(userVariant.json.data).sort(),
+        [
+          "id",
+          "isPurchasable",
+          "name",
+          "options",
+          "productId",
+          "productName",
+          "sku",
+          "unitPrice",
+        ],
+      );
+
+      const dealerVariant = await request(
+        `/variants/${encodeURIComponent(variantSku)}`,
+        { token: dealerToken },
+      );
+      expectApiResponse(dealerVariant, 200, true);
+      assert.equal(typeof dealerVariant.json.data.availableStock, "number");
+      for (const field of ["dealerPrice", "stock", "reserved", "status"]) {
+        assert.equal(
+          dealerVariant.json.data[field],
+          undefined,
+          `Dealer SKU leaked ${field}`,
+        );
+      }
+
+      const batch = await request("/variants/batch", {
+        method: "POST",
+        token: userToken,
+        body: { skus: [variantSku] },
+      });
+      expectApiResponse(batch, 201, true);
+      assert.equal(batch.json.data.items.length, 1);
+      assert.equal(batch.json.data.items[0].availableStock, undefined);
+
+      const stockProbe = await request("/variants/check-stock", {
+        method: "POST",
+        token: userToken,
+        body: { sku: variantSku, quantity: 1 },
+      });
+      expectApiResponse(stockProbe, 404, false);
+
+      const anonymousDealerCatalog = await request("/dealer/products");
+      expectApiResponse(anonymousDealerCatalog, 401, false);
+
+      const userDealerCatalog = await request("/dealer/products", {
+        token: userToken,
+      });
+      expectApiResponse(userDealerCatalog, 403, false);
+
+      const dealerCatalog = await request("/dealer/products", {
+        token: dealerToken,
+      });
+      expectApiResponse(dealerCatalog, 200, true);
+      const dealerProduct = dealerCatalog.json.data.items[0];
+      assert.deepEqual(
+        Object.keys(dealerProduct).sort(),
+        [
+          "ageMax",
+          "ageMin",
+          "category",
+          "dealerPrice",
+          "id",
+          "name",
+          "playEnvironment",
+          "retailPrice",
+          "shortDescription",
+          "slug",
+          "variants",
+        ],
+      );
+      assert.ok(dealerProduct.variants.length >= 1);
+      assert.deepEqual(
+        Object.keys(dealerProduct.variants[0]).sort(),
+        [
+          "availableStock",
+          "id",
+          "isPurchasable",
+          "name",
+          "sku",
+          "unitPrice",
+        ],
+      );
     },
   );
 
