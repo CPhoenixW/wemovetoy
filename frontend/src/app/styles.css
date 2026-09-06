@@ -767,3 +767,59 @@ button:disabled { cursor: wait; opacity: 0.7; }
   border-radius: 8px;
   margin-left: 4px;
 }
+
+/* ============ Dealer 申请页 ============ */
+
+.dealer-application__form { max-width: 560px; }
+
+.dealer-application__notice {
+  background: #eef6f4;
+  border: 1px solid #b7d8d3;
+  border-radius: 8px;
+  color: #005f57;
+  margin-top: 32px;
+  padding: 14px 16px;
+}
+
+.dealer-application__success { color: #005f57; margin: 0; }
+.dealer-application__empty { color: #60706a; margin-top: 24px; }
+.dealer-application__empty a { color: #005f57; }
+
+.dealer-application__list { margin-top: 48px; }
+.dealer-application__list h2 { font-size: 20px; margin: 0 0 16px; }
+.dealer-application__items {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dealer-application__items li {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+.dealer-application__item-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+.dealer-application__company { font-weight: 600; }
+.dealer-application__note { color: #60706a; margin: 8px 0 0; }
+.dealer-application__date { color: #a9b5b0; font-size: 13px; margin: 8px 0 0; }
+
+.dealer-application__skeleton {
+  animation: dealer-application-shimmer 1.4s ease-in-out infinite;
+  background: linear-gradient(90deg, #e6ebe9 25%, #f3f5f3 50%, #e6ebe9 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+}
+@keyframes dealer-application-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.dealer-application__skeleton--title { height: 32px; width: 55%; }
+.dealer-application__skeleton--line { height: 20px; margin-top: 12px; width: 34%; }
+.dealer-application__skeleton--block { height: 240px; margin-top: 24px; }

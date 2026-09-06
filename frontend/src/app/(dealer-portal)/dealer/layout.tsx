@@ -22,7 +22,9 @@ export default function DealerLayout({
   return (
     <div className="dealer-shell">
       <aside className="dealer-sidebar">
-        <Link className="dealer-brand" href="/dealer">WEMOVE Dealer</Link>
+        <Link className="dealer-brand" href="/dealer">
+          WEMOVE Dealer
+        </Link>
         <nav className="dealer-nav">
           {dealerNav.map((item) => (
             <Link key={item.href} href={item.href}>
