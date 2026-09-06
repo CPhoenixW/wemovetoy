@@ -1,90 +1,183 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { Cart, CartItem, Prisma } from "@prisma/client";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { Cart, CartItem, Prisma, UserRole } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  PriceAudience,
+  PurchasableVariant,
+  VariantsService,
+} from "../products/variants.service";
 
-/**
- * TODO(member-2): Replace this placeholder with a call to ProductsService
- * once the products module is available. The unit price must never be
- * trusted from the client; it must be resolved server-side from the
- * product/variant catalog owned by member 2.
- */
-interface VariantPriceProvider {
-  getUnitPrice(variantId: number): Promise<Prisma.Decimal>;
+export interface CartItemResponse {
+  id: number;
+  variantId: number;
+  sku: string;
+  productName: string;
+  variantName: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  availableStock: number;
+  isPurchasable: boolean;
 }
+
+export interface CartResponse {
+  id: number;
+  items: CartItemResponse[];
+  itemCount: number;
+  totalAmount: number;
+  updatedAt: Date;
+}
+
+type CartItemForDisplay = Prisma.CartItemGetPayload<{
+  include: {
+    variant: {
+      select: {
+        sku: true;
+        name: true;
+        product: { select: { name: true } };
+      };
+    };
+  };
+}>;
 
 @Injectable()
 export class CartService {
   constructor(
     private readonly prisma: PrismaService,
-    // TODO(member-2): inject ProductsService here once it exists, e.g.
-    // private readonly productsService: ProductsService,
+    private readonly variantsService: VariantsService,
   ) {}
 
   /**
-   * Return the user's cart with all items. Creates an empty cart if none
-   * exists yet.
+   * Return the user's cart enriched with server-resolved SKU, price and
+   * availability. The price and stock are never taken from the request body.
    */
-  async getCart(userId: number): Promise<Cart & { items: CartItem[] }> {
-    const cart = await this.prisma.cart.upsert({
+  async getCart(userId: number, role: UserRole): Promise<CartResponse> {
+    const audience = this.toAudience(role);
+    const cart = await this.getCartWithVariants(userId);
+
+    const items: CartItemResponse[] = [];
+    for (const item of cart.items) {
+      try {
+        const purchasable = await this.variantsService.getPurchasableVariant(
+          item.variantId,
+          audience,
+        );
+        items.push(this.toCartItem(item, purchasable));
+      } catch (error) {
+        if (
+          error instanceof NotFoundException ||
+          error instanceof BadRequestException
+        ) {
+          items.push(this.toUnavailableCartItem(item));
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    return {
+      id: cart.id,
+      items,
+      itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+      totalAmount: this.roundMoney(
+        items.reduce((sum, item) => sum + item.subtotal, 0),
+      ),
+      updatedAt: cart.updatedAt,
+    };
+  }
+
+  /**
+   * Return the raw cart (for order checkout). The order service re-resolves
+   * price and stock through the variants service, so no price is trusted here.
+   */
+  async getCartForCheckout(
+    userId: number,
+  ): Promise<Cart & { items: CartItem[] }> {
+    return this.prisma.cart.upsert({
       where: { userId },
       update: {},
       create: { userId },
       include: { items: { orderBy: { createdAt: "asc" } } },
     });
-    return cart;
   }
 
   /**
-   * Add a variant to the cart. If the variant already exists in the cart,
-   * the quantity is increased. The unit price is resolved server-side.
+   * Add a variant to the cart using its real SKU, price and stock. If the
+   * variant already exists, the quantity is accumulated and re-validated
+   * against the available stock.
    */
   async addItem(
     userId: number,
+    role: UserRole,
     variantId: number,
     quantity: number,
-  ): Promise<CartItem> {
-    const cart = await this.getCart(userId);
-    const unitPrice = this.resolveUnitPrice(variantId);
+  ): Promise<CartItemResponse> {
+    const audience = this.toAudience(role);
+    const purchasable = await this.variantsService.getPurchasableVariant(
+      variantId,
+      audience,
+    );
 
+    const cart = await this.getCartForCheckout(userId);
     const existing = await this.prisma.cartItem.findUnique({
       where: {
         cartId_variantId: { cartId: cart.id, variantId },
       },
     });
 
-    if (existing) {
-      return this.prisma.cartItem.update({
-        where: { id: existing.id },
-        data: {
-          quantity: existing.quantity + quantity,
-          unitPrice,
-        },
-      });
+    const nextQuantity = existing ? existing.quantity + quantity : quantity;
+    if (nextQuantity > purchasable.availableStock) {
+      throw new BadRequestException(
+        `Insufficient stock for variant ${purchasable.sku}`,
+      );
     }
 
-    return this.prisma.cartItem.create({
-      data: {
-        cartId: cart.id,
-        variantId,
-        quantity,
-        unitPrice,
-      },
-    });
+    const unitPrice = purchasable.unitPrice;
+    const item = existing
+      ? await this.prisma.cartItem.update({
+          where: { id: existing.id },
+          data: { quantity: nextQuantity, unitPrice },
+        })
+      : await this.prisma.cartItem.create({
+          data: { cartId: cart.id, variantId, quantity, unitPrice },
+        });
+
+    return this.toCartItem(item, purchasable);
   }
 
   /**
-   * Update the quantity of an existing cart item.
+   * Update the quantity of an existing cart item, re-validating stock and
+   * refreshing the server-side unit price.
    */
   async updateItem(
     userId: number,
+    role: UserRole,
     itemId: number,
     quantity: number,
-  ): Promise<CartItem> {
+  ): Promise<CartItemResponse> {
+    const audience = this.toAudience(role);
     const item = await this.findOwnedItem(userId, itemId);
-    return this.prisma.cartItem.update({
+    const purchasable = await this.variantsService.getPurchasableVariant(
+      item.variantId,
+      audience,
+    );
+
+    if (quantity > purchasable.availableStock) {
+      throw new BadRequestException(
+        `Insufficient stock for variant ${purchasable.sku}`,
+      );
+    }
+
+    const updated = await this.prisma.cartItem.update({
       where: { id: item.id },
-      data: { quantity },
+      data: { quantity, unitPrice: purchasable.unitPrice },
     });
+
+    return this.toCartItem(updated, purchasable);
   }
 
   /**
@@ -105,20 +198,73 @@ export class CartService {
     }
   }
 
-  /**
-   * Resolve the unit price for a variant.
-   *
-   * TODO(member-2): Replace the placeholder below with a real call to
-   * ProductsService (or the variant catalog service) once member 2 ships
-   * the products module. The price must come from the server, not the
-   * request body.
-   */
-  private resolveUnitPrice(variantId: number): Prisma.Decimal {
-    // Placeholder: return a zero price. This keeps the cart flow testable
-    // before the products module exists. Replace with an async ProductsService
-    // call once member 2 ships the products module.
-    void variantId;
-    return new Prisma.Decimal(0);
+  private toAudience(role: UserRole): PriceAudience {
+    return role === UserRole.DEALER ? "DEALER" : "RETAIL";
+  }
+
+  private async getCartWithVariants(userId: number): Promise<
+    Cart & {
+      items: CartItemForDisplay[];
+    }
+  > {
+    return this.prisma.cart.upsert({
+      where: { userId },
+      update: {},
+      create: { userId },
+      include: {
+        items: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            variant: {
+              select: {
+                sku: true,
+                name: true,
+                product: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  private toCartItem(
+    item: { id: number; variantId: number; quantity: number },
+    purchasable: PurchasableVariant,
+  ): CartItemResponse {
+    const unitPrice = purchasable.unitPrice.toNumber();
+    return {
+      id: item.id,
+      variantId: item.variantId,
+      sku: purchasable.sku,
+      productName: purchasable.productName,
+      variantName: purchasable.variantName,
+      quantity: item.quantity,
+      unitPrice,
+      subtotal: this.roundMoney(unitPrice * item.quantity),
+      availableStock: purchasable.availableStock,
+      isPurchasable: true,
+    };
+  }
+
+  private toUnavailableCartItem(item: CartItemForDisplay): CartItemResponse {
+    const unitPrice = item.unitPrice.toNumber();
+    return {
+      id: item.id,
+      variantId: item.variantId,
+      sku: item.variant.sku,
+      productName: item.variant.product.name,
+      variantName: item.variant.name,
+      quantity: item.quantity,
+      unitPrice,
+      subtotal: this.roundMoney(unitPrice * item.quantity),
+      availableStock: 0,
+      isPurchasable: false,
+    };
+  }
+
+  private roundMoney(value: number): number {
+    return Math.round((value + Number.EPSILON) * 100) / 100;
   }
 
   private async findOwnedItem(
@@ -138,6 +284,3 @@ export class CartService {
     return item;
   }
 }
-
-// Re-export the interface for testing / future wiring.
-export type { VariantPriceProvider };
