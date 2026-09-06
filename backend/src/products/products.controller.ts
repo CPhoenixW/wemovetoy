@@ -31,7 +31,7 @@ export class ProductsController {
   @Public()
   @Get("products")
   async findAll(@Query() query: QueryProductDto) {
-    return this.productsService.findAll(query);
+    return this.productsService.findAll(query, true);
   }
 
   // ============================================================

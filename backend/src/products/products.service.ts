@@ -12,6 +12,8 @@ import {
   SafeProduct,
   SafeProductWithRelations,
   toSafeProduct,
+  PublicSafeProduct,
+  toPublicSafeProduct,
 } from "./safe-product";
 
 @Injectable()
@@ -56,24 +58,23 @@ export class ProductsService {
   // ============================================================
   // 商品列表（分页、筛选、排序）
   // ============================================================
-  async findAll(query: QueryProductDto): Promise<{
-    items: SafeProduct[];
+  async findAll(
+    query: QueryProductDto,
+    isPublic: boolean = false,
+  ): Promise<{
+    items: SafeProduct[] | PublicSafeProduct[]; // 允许返回两种类型
     total: number;
     page: number;
     totalPages: number;
   }> {
     const { page = 1, limit = 20, sort, categoryId, status, search } = query;
 
-    // 构建 where 条件
     const where: Prisma.ProductWhereInput = {
-      deletedAt: null, // 只查未删除的
+      deletedAt: null,
     };
 
     if (categoryId) {
       where.categoryId = categoryId;
-    }
-    if (status) {
-      where.status = status;
     }
     if (search) {
       where.OR = [
@@ -83,21 +84,18 @@ export class ProductsService {
       ];
     }
 
-    // 构建 orderBy
-    let orderBy: Prisma.ProductOrderByWithRelationInput = {
-      createdAt: "desc",
-    };
-    if (sort === "price_asc") {
-      orderBy = { price: "asc" };
-    } else if (sort === "price_desc") {
-      orderBy = { price: "desc" };
-    } else if (sort === "name_asc") {
-      orderBy = { name: "asc" };
-    } else if (sort === "name_desc") {
-      orderBy = { name: "desc" };
-    } else if (sort === "newest") {
-      orderBy = { createdAt: "desc" };
+    if (isPublic) {
+      where.status = "ACTIVE";
+    } else if (status) {
+      where.status = status;
     }
+
+    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: "desc" };
+    if (sort === "price_asc") orderBy = { price: "asc" };
+    else if (sort === "price_desc") orderBy = { price: "desc" };
+    else if (sort === "name_asc") orderBy = { name: "asc" };
+    else if (sort === "name_desc") orderBy = { name: "desc" };
+    else if (sort === "newest") orderBy = { createdAt: "desc" };
 
     const [items, total] = await Promise.all([
       this.prisma.product.findMany({
@@ -106,13 +104,20 @@ export class ProductsService {
         skip: (page - 1) * limit,
         take: limit,
         include: {
-          category: {
-            select: { id: true, name: true, slug: true },
-          },
+          category: { select: { id: true, name: true, slug: true } },
         },
       }),
       this.prisma.product.count({ where }),
     ]);
+
+    if (isPublic) {
+      return {
+        items: items.map(toPublicSafeProduct),
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+      };
+    }
 
     return {
       items: items.map(toSafeProduct),

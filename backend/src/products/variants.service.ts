@@ -1,8 +1,14 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { VariantStatus } from "@prisma/client";
 import { VariantResponseDto } from "./dto/variant-response.dto";
 import { Prisma } from "@prisma/client";
+import { CreateVariantDto } from "./dto/create-variant.dto";
+import { UpdateVariantDto } from "./dto/update-variant.dto";
 
 @Injectable()
 export class VariantsService {
@@ -144,6 +150,123 @@ export class VariantsService {
     }
 
     return { available: true, availableStock };
+  }
+
+  // 在 VariantsService 类中添加以下方法
+
+  async createVariant(input: CreateVariantDto): Promise<VariantResponseDto> {
+    // 检查 productId 是否存在
+    const product = await this.prisma.product.findUnique({
+      where: { id: input.productId },
+    });
+    if (!product) {
+      throw new NotFoundException(
+        `Product with id ${input.productId} not found`,
+      );
+    }
+
+    // 检查 SKU 是否唯一
+    const existing = await this.prisma.variant.findUnique({
+      where: { sku: input.sku },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `Variant with SKU "${input.sku}" already exists`,
+      );
+    }
+
+    const variant = await this.prisma.variant.create({
+      data: {
+        sku: input.sku,
+        name: input.name,
+        options: input.options as Prisma.InputJsonValue,
+        price: input.price,
+        dealerPrice: input.dealerPrice,
+        stock: input.stock,
+        reserved: 0,
+        status: input.status ?? VariantStatus.ACTIVE,
+        productId: input.productId,
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            deletedAt: true,
+            price: true,
+            dealerPrice: true,
+          },
+        },
+      },
+    });
+
+    return this.buildVariantResponse(variant, false);
+  }
+
+  async updateVariant(
+    id: number,
+    input: UpdateVariantDto,
+  ): Promise<VariantResponseDto> {
+    const existing = await this.prisma.variant.findUnique({
+      where: { id },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Variant with id ${id} not found`);
+    }
+
+    // 如果更新 SKU，检查唯一性
+    if (input.sku && input.sku !== existing.sku) {
+      const conflict = await this.prisma.variant.findUnique({
+        where: { sku: input.sku },
+      });
+      if (conflict) {
+        throw new ConflictException(
+          `Variant with SKU "${input.sku}" already exists`,
+        );
+      }
+    }
+
+    const variant = await this.prisma.variant.update({
+      where: { id },
+      data: {
+        sku: input.sku,
+        name: input.name,
+        options: input.options as Prisma.InputJsonValue,
+        price: input.price,
+        dealerPrice: input.dealerPrice,
+        stock: input.stock,
+        status: input.status,
+        productId: input.productId,
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            deletedAt: true,
+            price: true,
+            dealerPrice: true,
+          },
+        },
+      },
+    });
+
+    return this.buildVariantResponse(variant, false);
+  }
+
+  async deleteVariant(id: number): Promise<void> {
+    const existing = await this.prisma.variant.findUnique({
+      where: { id },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Variant with id ${id} not found`);
+    }
+
+    await this.prisma.variant.delete({
+      where: { id },
+    });
   }
 
   private buildVariantResponse(

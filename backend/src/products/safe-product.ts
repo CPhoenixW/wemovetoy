@@ -62,3 +62,29 @@ export function toSafeProduct(product: Product): SafeProduct {
     updatedAt: product.updatedAt,
   };
 }
+
+// 公开商品类型（不含 dealerPrice，供匿名用户使用）
+export interface PublicSafeProduct {
+  id: number;
+  name: string;
+  slug: string;
+  shortDescription: string;
+  description: string;
+  price: number;
+  ageMin: number | null;
+  ageMax: number | null;
+  playEnvironment: string | null;
+  status: ProductStatus;
+  features: Prisma.JsonValue;
+  specifications: Prisma.JsonValue;
+  categoryId: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 在 toSafeProduct 基础上增加过滤 dealerPrice 的函数
+export function toPublicSafeProduct(product: Product): PublicSafeProduct {
+  const safe = toSafeProduct(product);
+  const { dealerPrice: __, ...publicProduct } = safe;
+  return publicProduct;
+}

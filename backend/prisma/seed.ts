@@ -1,5 +1,4 @@
-import { PrismaClient, UserRole } from '@prisma/client';
-import { ProductStatus } from '@prisma/client';
+import { PrismaClient, UserRole, ProductStatus, VariantStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -155,13 +154,64 @@ async function main() {
 
   // 创建商品
   for (const productData of seedProducts) {
-    await prisma.product.upsert({
+    const product = await prisma.product.upsert({
       where: { slug: productData.slug },
       update: {},
       create: {
         ...productData,
         categoryId: category.id,
       },
+    });
+    const variantData = [
+      {
+        sku: `${productData.slug}-basic`,
+        name: '基础款',
+        options: { version: '基础' },
+        price: productData.price,
+        dealerPrice: productData.dealerPrice,
+        stock: 80,
+        reserved: 0,
+        status: 'ACTIVE',
+      },
+      {
+        sku: `${productData.slug}-pro`,
+        name: '进阶款',
+        options: { version: '进阶' },
+        price: productData.price * 1.2,
+        dealerPrice: productData.dealerPrice * 1.2,
+        stock: 30,
+        reserved: 0,
+        status: 'ACTIVE',
+      },
+    ];
+
+    // 在创建商品后添加变体
+    await prisma.variant.createMany({
+      data: [
+        {
+          productId: product.id,
+          sku: `${productData.slug}-basic`,
+          name: '基础款',
+          options: { version: '基础' },
+          price: productData.price,
+          dealerPrice: productData.dealerPrice,
+          stock: 80,
+          reserved: 0,
+          status: VariantStatus.ACTIVE,  // 使用枚举
+        },
+        {
+          productId: product.id,
+          sku: `${productData.slug}-pro`,
+          name: '进阶款',
+          options: { version: '进阶' },
+          price: productData.price * 1.2,
+          dealerPrice: productData.dealerPrice * 1.2,
+          stock: 30,
+          reserved: 0,
+          status: VariantStatus.ACTIVE,
+        },
+      ],
+      skipDuplicates: true,
     });
   }
   console.log(`Seeded ${seedProducts.length} products.`);
