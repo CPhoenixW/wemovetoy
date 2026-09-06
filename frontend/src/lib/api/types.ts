@@ -158,6 +158,59 @@ export interface DealerProduct {
   variants: DealerVariant[];
 }
 
+// ===== 公开商品（成员2 契约：GET /products，不暴露 dealerPrice/status/stock） =====
+export type ProductSort =
+  | "newest"
+  | "price_asc"
+  | "price_desc"
+  | "name_asc"
+  | "name_desc";
+
+export interface Product {
+  id: number;
+  name: string;
+  slug: string;
+  shortDescription: string;
+  price: number;
+  ageMin: number | null;
+  ageMax: number | null;
+  playEnvironment: string | null;
+  features: string[];
+  specifications: Record<string, unknown>;
+  category: CategoryRef | null;
+  createdAt: string;
+}
+
+export interface ProductVariant {
+  id: number;
+  sku: string;
+  name: string;
+  options: Record<string, unknown> | null;
+  price: number;
+  isPurchasable: boolean;
+}
+
+export interface ProductDetail extends Product {
+  description: string;
+  variants: ProductVariant[];
+}
+
+export interface ProductListResult {
+  items: Product[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ProductListQuery {
+  page?: number;
+  limit?: number;
+  sort?: ProductSort;
+  categoryId?: number;
+  search?: string;
+}
+
 // ===== 购物车（成员3 契约，PR #10；服务端定价/库存） =====
 export interface CartItem {
   id: number;

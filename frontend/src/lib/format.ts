@@ -16,6 +16,16 @@ export function formatDate(iso: string | null): string {
     .padStart(2, "0")}`;
 }
 
+export function formatAgeRange(
+  ageMin: number | null | undefined,
+  ageMax: number | null | undefined,
+): string | null {
+  if (ageMin == null && ageMax == null) return null;
+  if (ageMax == null) return `${ageMin}岁+`;
+  if (ageMin == null) return `≤${ageMax}岁`;
+  return `${ageMin}–${ageMax}岁`;
+}
+
 export const productStatusMap: Record<string, { status: string; label: string }> = {
   ACTIVE: { status: "active", label: "上架中" },
   ARCHIVED: { status: "inactive", label: "已下架" },
