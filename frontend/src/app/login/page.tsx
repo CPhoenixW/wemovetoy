@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { ApiError, apiRequest } from "@/lib/api/client";
 import type { LoginResult } from "@/lib/api/types";
+import { storeAuth } from "@/lib/auth-storage";
 
 export default function LoginPage() {
   const [error, setError] = useState<string>();
@@ -22,8 +23,7 @@ export default function LoginPage() {
           password: form.get("password"),
         }),
       });
-      sessionStorage.setItem("wemove.accessToken", result.accessToken);
-      sessionStorage.setItem("wemove.user", JSON.stringify(result.user));
+      storeAuth(result.accessToken, result.user);
       window.location.assign("/products");
     } catch (caughtError) {
       setError(

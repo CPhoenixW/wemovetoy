@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
-import { ApiError } from "@/lib/api/client";
 import { listProducts } from "@/lib/api/products";
 import type { ProductListResult, ProductSort } from "@/lib/api/types";
 
@@ -51,14 +50,12 @@ export default async function ProductsPage({
     return qs ? `/products?${qs}` : "/products";
   };
 
-  let result: ProductListResult | undefined;
-  let error: string | undefined;
-  try {
-    result = await listProducts({ page, limit: PAGE_SIZE, sort, search });
-  } catch (caught) {
-    error =
-      caught instanceof ApiError ? caught.message : "Unable to load products";
-  }
+  const result: ProductListResult = await listProducts({
+    page,
+    limit: PAGE_SIZE,
+    sort,
+    search,
+  });
 
   return (
     <section className="page-shell">
@@ -90,9 +87,7 @@ export default async function ProductsPage({
         ))}
       </nav>
 
-      {error ? (
-        <p className="form-error">{error}</p>
-      ) : result && result.items.length > 0 ? (
+      {result.items.length > 0 ? (
         <>
           <div aria-label="Product catalogue" className="product-grid">
             {result.items.map((product) => (
@@ -106,9 +101,9 @@ export default async function ProductsPage({
             totalPages={result.totalPages}
           />
         </>
-      ) : result ? (
+      ) : (
         <p className="empty-state">No products found.</p>
-      ) : null}
+      )}
     </section>
   );
 }
