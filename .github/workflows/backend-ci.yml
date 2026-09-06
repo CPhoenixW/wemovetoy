@@ -31,6 +31,61 @@ jobs:
       - run: npm test -- --runInBand
       - run: npm run build
 
+  verify-api-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: wemove_test
+          POSTGRES_USER: wemove
+          POSTGRES_PASSWORD: wemove_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wemove -d wemove_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql://wemove:wemove_test_password@localhost:5432/wemove_test?schema=public
+      PORT: 3100
+      JWT_SECRET: wemove-ci-only-integration-secret
+      E2E_BASE_URL: http://localhost:3100/api/v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run prisma:generate
+      - run: npm run prisma:deploy
+      - run: npm run prisma:seed
+      - name: Run cross-module API smoke tests
+        shell: bash
+        run: |
+          npm run start > "$RUNNER_TEMP/wemove-api.log" 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent "http://localhost:3100/api/v1/health" > /dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat "$RUNNER_TEMP/wemove-api.log"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          node --test ../tests/api-smoke.test.mjs
+
   verify-frontend:
     runs-on: ubuntu-latest
     defaults:
