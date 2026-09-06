@@ -13,7 +13,6 @@ import {
   SafeProductWithRelations,
   toSafeProduct,
   PublicSafeProduct,
-  toPublicSafeProduct,
 } from "./safe-product";
 
 @Injectable()
@@ -61,6 +60,7 @@ export class ProductsService {
   async findAll(
     query: QueryProductDto,
     isPublic: boolean = false,
+    forDealer: boolean = false,
   ): Promise<{
     items: SafeProduct[] | PublicSafeProduct[]; // 允许返回两种类型
     total: number;
@@ -111,8 +111,27 @@ export class ProductsService {
     ]);
 
     if (isPublic) {
+      // 公开：返回去除 dealerPrice 的公开 DTO（已有）
       return {
-        items: items.map(toPublicSafeProduct),
+        items: items.map((item) => ({
+          ...toSafeProduct(item),
+          category: item.category,
+        })),
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+      };
+    }
+
+    if (forDealer) {
+      // Dealer：返回包含 dealerPrice 但无库存的 DTO
+      return {
+        items: items.map((item) => ({
+          ...toSafeProduct(item),
+          category: item.category,
+          // 保留 dealerPrice（已在 SafeProduct 中）
+          // 库存字段不返回
+        })),
         total,
         page,
         totalPages: Math.ceil(total / limit),

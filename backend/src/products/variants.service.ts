@@ -4,21 +4,19 @@ import {
   ConflictException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { VariantStatus } from "@prisma/client";
-import { VariantResponseDto } from "./dto/variant-response.dto";
-import { Prisma } from "@prisma/client";
+import { Prisma, VariantStatus } from "@prisma/client";
 import { CreateVariantDto } from "./dto/create-variant.dto";
 import { UpdateVariantDto } from "./dto/update-variant.dto";
+import { VariantResponseDto } from "./dto/variant-response.dto";
+
+export type PriceAudience = "RETAIL" | "DEALER";
 
 @Injectable()
 export class VariantsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * 根据 SKU 查询变体信息（供购物车和订单调用）
-   * @param sku - 商品 SKU
-   * @param userId - 当前用户 ID（用于判断角色，如果是经销商则返回经销商价）
-   * @param isDealer - 是否为经销商（简化版，也可以用 JWT 中的角色）
+   * 根据 SKU 查询变体信息（供 Controller 使用）
    */
   async getVariantBySku(
     sku: string,
@@ -44,7 +42,6 @@ export class VariantsService {
       throw new NotFoundException(`Variant with SKU "${sku}" not found`);
     }
 
-    // 判断是否可购买
     const isProductActive =
       variant.product.status === "ACTIVE" && variant.product.deletedAt === null;
     const isVariantActive = variant.status === VariantStatus.ACTIVE;
@@ -102,8 +99,8 @@ export class VariantsService {
   }
 
   /**
-   * 校验库存是否充足（供订单模块调用）
-   * @returns 是否可购买，以及剩余库存
+   * 【内部使用】校验库存是否充足（供订单模块调用）
+   * @deprecated 推荐使用 getPurchasableVariant 替代
    */
   async checkStock(
     sku: string,
@@ -152,10 +149,10 @@ export class VariantsService {
     return { available: true, availableStock };
   }
 
-  // 在 VariantsService 类中添加以下方法
-
+  /**
+   * 创建变体（Admin 专用）
+   */
   async createVariant(input: CreateVariantDto): Promise<VariantResponseDto> {
-    // 检查 productId 是否存在
     const product = await this.prisma.product.findUnique({
       where: { id: input.productId },
     });
@@ -165,7 +162,6 @@ export class VariantsService {
       );
     }
 
-    // 检查 SKU 是否唯一
     const existing = await this.prisma.variant.findUnique({
       where: { sku: input.sku },
     });
@@ -182,7 +178,7 @@ export class VariantsService {
         options: input.options as Prisma.InputJsonValue,
         price: input.price,
         dealerPrice: input.dealerPrice,
-        stock: input.stock,
+        stock: input.stock ?? 0,
         reserved: 0,
         status: input.status ?? VariantStatus.ACTIVE,
         productId: input.productId,
@@ -204,6 +200,9 @@ export class VariantsService {
     return this.buildVariantResponse(variant, false);
   }
 
+  /**
+   * 更新变体（Admin 专用）
+   */
   async updateVariant(
     id: number,
     input: UpdateVariantDto,
@@ -215,7 +214,6 @@ export class VariantsService {
       throw new NotFoundException(`Variant with id ${id} not found`);
     }
 
-    // 如果更新 SKU，检查唯一性
     if (input.sku && input.sku !== existing.sku) {
       const conflict = await this.prisma.variant.findUnique({
         where: { sku: input.sku },
@@ -256,6 +254,9 @@ export class VariantsService {
     return this.buildVariantResponse(variant, false);
   }
 
+  /**
+   * 删除变体（Admin 专用）
+   */
   async deleteVariant(id: number): Promise<void> {
     const existing = await this.prisma.variant.findUnique({
       where: { id },
@@ -270,18 +271,19 @@ export class VariantsService {
   }
 
   /**
-   * 供购物车和订单调用的核心方法
-   * 返回商品/SKU 的真实名称、价格、可售库存和状态
+   * 【核心方法】供购物车和订单模块调用的交易接口
+   * 返回符合契约的 PurchasableVariant 对象，unitPrice 为 Prisma.Decimal
+   * 不可售时返回 isPurchasable: false 和具体原因，不抛出异常
    */
   async getPurchasableVariant(
     variantId: number,
-    audience: "public" | "dealer" = "public",
+    audience: PriceAudience,
   ): Promise<{
     variantId: number;
     sku: string;
     productName: string;
     variantName: string;
-    unitPrice: number;
+    unitPrice: Prisma.Decimal;
     availableStock: number;
     isPurchasable: boolean;
     reason?: string;
@@ -306,7 +308,7 @@ export class VariantsService {
         sku: "",
         productName: "",
         variantName: "",
-        unitPrice: 0,
+        unitPrice: new Prisma.Decimal(0),
         availableStock: 0,
         isPurchasable: false,
         reason: "SKU not found",
@@ -317,13 +319,50 @@ export class VariantsService {
       variant.product.status === "ACTIVE" && variant.product.deletedAt === null;
     const isVariantActive = variant.status === VariantStatus.ACTIVE;
     const availableStock = variant.stock - variant.reserved;
-    const isPurchasable =
-      isProductActive && isVariantActive && availableStock > 0;
+
+    if (!isProductActive) {
+      return {
+        variantId: variant.id,
+        sku: variant.sku,
+        productName: variant.product.name,
+        variantName: variant.name,
+        unitPrice: new Prisma.Decimal(0),
+        availableStock,
+        isPurchasable: false,
+        reason: "Product is not active",
+      };
+    }
+
+    if (!isVariantActive) {
+      return {
+        variantId: variant.id,
+        sku: variant.sku,
+        productName: variant.product.name,
+        variantName: variant.name,
+        unitPrice: new Prisma.Decimal(0),
+        availableStock,
+        isPurchasable: false,
+        reason: "Variant is not active",
+      };
+    }
+
+    if (availableStock <= 0) {
+      return {
+        variantId: variant.id,
+        sku: variant.sku,
+        productName: variant.product.name,
+        variantName: variant.name,
+        unitPrice: new Prisma.Decimal(0),
+        availableStock,
+        isPurchasable: false,
+        reason: "Insufficient stock",
+      };
+    }
 
     const unitPrice =
-      audience === "dealer" && variant.dealerPrice
-        ? Number(variant.dealerPrice)
-        : Number(variant.price);
+      audience === "DEALER" && variant.dealerPrice
+        ? new Prisma.Decimal(variant.dealerPrice.toString())
+        : new Prisma.Decimal(variant.price.toString());
 
     return {
       variantId: variant.id,
@@ -332,8 +371,7 @@ export class VariantsService {
       variantName: variant.name,
       unitPrice,
       availableStock,
-      isPurchasable,
-      reason: isPurchasable ? undefined : "Product not available for purchase",
+      isPurchasable: true,
     };
   }
 

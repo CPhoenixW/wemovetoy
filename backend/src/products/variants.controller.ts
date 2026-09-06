@@ -15,7 +15,6 @@ import { VariantsService } from "./variants.service";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
-import { Public } from "../common/decorators/public.decorator";
 import { CreateVariantDto } from "./dto/create-variant.dto";
 import { UpdateVariantDto } from "./dto/update-variant.dto";
 
@@ -35,11 +34,17 @@ export class VariantsController {
   // 公开 SKU 查询：普通用户只能看到价格（不含 dealerPrice）、是否可购买
   // GET /api/v1/variants/:sku
   // ============================================================
+  // 单件查询：需 JWT，按角色返回对应价格（普通用户看不到 dealerPrice）
   @Get(":sku")
-  @Public()
-  async getPublicVariant(@Param("sku") sku: string) {
-    const variant = await this.variantsService.getVariantBySku(sku, false);
-    // 只返回公开字段
+  @UseGuards(JwtAuthGuard)
+  async getVariantBySku(
+    @Param("sku") sku: string,
+    @Request() req: RequestWithUser,
+  ) {
+    const isDealer =
+      req.user.role === UserRole.DEALER || req.user.role === UserRole.ADMIN;
+    const variant = await this.variantsService.getVariantBySku(sku, isDealer);
+    // 返回最小响应（不含 stock/reserved）
     return {
       sku: variant.sku,
       name: variant.name,
@@ -76,16 +81,6 @@ export class VariantsController {
       isDealer,
     );
     return { items: Array.from(result.values()) };
-  }
-
-  // ============================================================
-  // 校验库存（登录用户）
-  // POST /api/v1/variants/check-stock
-  // ============================================================
-  @Post("check-stock")
-  @UseGuards(JwtAuthGuard)
-  async checkStock(@Body() body: { sku: string; quantity: number }) {
-    return this.variantsService.checkStock(body.sku, body.quantity);
   }
 
   // ============================================================
