@@ -1,51 +1,56 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Modal } from "@/components/ui/modal";
-import {
-  mockProducts,
-  productStatusMap,
-  formatPrice,
-  type MockProduct,
-} from "@/lib/mocks/products";
+import { deleteProduct, listProducts } from "@/lib/api/products";
+import type { Product } from "@/lib/api/types";
+import { formatPrice, productStatusMap } from "@/lib/format";
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<MockProduct[]>(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<MockProduct | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return products;
-    const q = search.toLowerCase();
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.slug.toLowerCase().includes(q) ||
-        p.shortDescription.toLowerCase().includes(q),
-    );
-  }, [products, search]);
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await listProducts({ limit: 100, search });
+      setProducts(data.items);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "加载商品失败");
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const columns: Column<MockProduct>[] = [
+  useEffect(() => {
+    const timer = setTimeout(load, search ? 300 : 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
+  const columns: Column<Product>[] = [
     { key: "id", header: "ID", className: "col-id" },
     {
       key: "name",
       header: "商品名称",
       render: (row) => (
-        <Link
-          href={`/admin/products/${row.id}`}
-          className="link-primary"
-        >
+        <Link href={`/admin/products/${row.id}/edit`} className="link-primary">
           {row.name}
         </Link>
       ),
     },
     {
-      key: "category",
+      key: "categoryId",
       header: "分类",
-      render: (row) => row.category?.name ?? "—",
+      render: (row) => (row.categoryId != null ? `#${row.categoryId}` : "—"),
     },
     {
       key: "price",
@@ -64,7 +69,7 @@ export default function AdminProductsPage() {
       header: "状态",
       render: (row) => {
         const s = productStatusMap[row.status];
-        return <StatusBadge status={s.status} label={s.label} />;
+        return s ? <StatusBadge status={s.status} label={s.label} /> : row.status;
       },
     },
     {
@@ -72,7 +77,7 @@ export default function AdminProductsPage() {
       header: "操作",
       render: (row) => (
         <div className="row-actions">
-          <Link href={`/admin/products/${row.id}`} className="link-primary">
+          <Link href={`/admin/products/${row.id}/edit`} className="link-primary">
             编辑
           </Link>
           <button
@@ -88,10 +93,18 @@ export default function AdminProductsPage() {
     },
   ];
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!deleteTarget) return;
-    setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    setDeleting(true);
+    try {
+      await deleteProduct(deleteTarget.id);
+      setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "删除失败");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -101,7 +114,7 @@ export default function AdminProductsPage() {
           <p className="eyebrow">Admin Console</p>
           <h1>商品管理</h1>
           <p className="page-subtitle">
-            共 {filtered.length} 个商品，搜索可按名称、slug、描述过滤
+            共 {products.length} 个商品，搜索按名称、描述过滤
           </p>
         </div>
         <Link href="/admin/products/new" className="btn-primary">
@@ -119,26 +132,32 @@ export default function AdminProductsPage() {
         />
       </div>
 
-      <DataTable<MockProduct>
-        columns={columns}
-        data={filtered}
-        rowKey={(row) => row.id}
-        emptyTitle="还没有商品"
-        emptyDescription="点击右上角「新增商品」来创建第一个商品"
-      />
+      {error ? <p className="form-error">{error}</p> : null}
+
+      {loading ? (
+        <p className="page-loading">加载中...</p>
+      ) : (
+        <DataTable<Product>
+          columns={columns}
+          data={products}
+          rowKey={(row) => row.id}
+          emptyTitle="还没有商品"
+          emptyDescription="点击右上角「新增商品」来创建第一个商品"
+        />
+      )}
 
       <Modal
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         title="确认删除"
-        confirmText="删除"
+        confirmText={deleting ? "删除中..." : "删除"}
         cancelText="取消"
         confirmVariant="danger"
         onConfirm={handleConfirmDelete}
       >
         <p>
           确定要删除商品 <strong>{deleteTarget?.name}</strong> 吗？
-          此操作不可恢复。
+          删除后前台将不再展示。
         </p>
       </Modal>
     </div>

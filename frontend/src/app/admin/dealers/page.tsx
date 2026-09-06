@@ -1,15 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Modal } from "@/components/ui/modal";
 import {
-  mockDealerApplications,
-  dealerStatusMap,
-  formatDate,
-  type MockDealerApplication,
-} from "@/lib/mocks/dealers";
+  approveApplication,
+  getAdminApplications,
+  rejectApplication,
+} from "@/lib/api/dealers";
+import type { DealerApplication } from "@/lib/api/types";
+import { dealerStatusMap, formatDate } from "@/lib/format";
 
 const FILTER_TABS: Array<{ key: string; label: string }> = [
   { key: "ALL", label: "全部" },
@@ -19,20 +20,41 @@ const FILTER_TABS: Array<{ key: string; label: string }> = [
 ];
 
 export default function AdminDealersPage() {
-  const [applications, setApplications] = useState<MockDealerApplication[]>(
-    mockDealerApplications,
-  );
+  const [applications, setApplications] = useState<DealerApplication[]>([]);
   const [filter, setFilter] = useState("ALL");
-  const [reviewTarget, setReviewTarget] = useState<MockDealerApplication | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reviewTarget, setReviewTarget] = useState<DealerApplication | null>(null);
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
   const [reviewNote, setReviewNote] = useState("");
+  const [reviewing, setReviewing] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getAdminApplications()
+      .then((data) => {
+        if (!cancelled) setApplications(data);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "加载申请列表失败");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     if (filter === "ALL") return applications;
     return applications.filter((a) => a.status === filter);
   }, [applications, filter]);
 
-  const columns: Column<MockDealerApplication>[] = [
+  const columns: Column<DealerApplication>[] = [
     { key: "id", header: "#", className: "col-id" },
     {
       key: "companyName",
@@ -40,7 +62,7 @@ export default function AdminDealersPage() {
       render: (row) => (
         <div>
           <div className="company-name">{row.companyName}</div>
-          <div className="company-contact">{row.contactEmail}</div>
+          <div className="company-contact">{row.contactName}</div>
         </div>
       ),
     },
@@ -50,7 +72,7 @@ export default function AdminDealersPage() {
       header: "状态",
       render: (row) => {
         const s = dealerStatusMap[row.status];
-        return <StatusBadge status={s.status} label={s.label} />;
+        return s ? <StatusBadge status={s.status} label={s.label} /> : row.status;
       },
     },
     {
@@ -101,10 +123,11 @@ export default function AdminDealersPage() {
     },
   ];
 
-  function openReview(row: MockDealerApplication, action: "approve" | "reject") {
+  function openReview(row: DealerApplication, action: "approve" | "reject") {
     setReviewTarget(row);
     setReviewAction(action);
     setReviewNote(row.reviewNote ?? "");
+    setError("");
   }
 
   function closeReview() {
@@ -113,24 +136,25 @@ export default function AdminDealersPage() {
     setReviewNote("");
   }
 
-  function handleConfirmReview() {
+  /** 审核：调用后端 approve/reject 接口，用返回实体更新本地状态 */
+  async function handleConfirmReview() {
     if (!reviewTarget || !reviewAction) return;
-    const newStatus: MockDealerApplication["status"] =
-      reviewAction === "approve" ? "APPROVED" : "REJECTED";
-    setApplications((prev) =>
-      prev.map((a) =>
-        a.id === reviewTarget.id
-          ? {
-              ...a,
-              status: newStatus,
-              reviewNote: reviewNote || null,
-              reviewerName: "admin",
-              reviewedAt: new Date().toISOString(),
-            }
-          : a,
-      ),
-    );
-    closeReview();
+    setReviewing(true);
+    setError("");
+    try {
+      const updated =
+        reviewAction === "approve"
+          ? await approveApplication(reviewTarget.id, reviewNote || undefined)
+          : await rejectApplication(reviewTarget.id, reviewNote || undefined);
+      setApplications((prev) =>
+        prev.map((a) => (a.id === updated.id ? updated : a)),
+      );
+      closeReview();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "审核操作失败");
+    } finally {
+      setReviewing(false);
+    }
   }
 
   // 详情 Modal（已审核的申请）
@@ -148,8 +172,8 @@ export default function AdminDealersPage() {
             <span>{reviewTarget.companyName}</span>
           </div>
           <div>
-            <span className="detail-label">联系人邮箱</span>
-            <span>{reviewTarget.contactEmail}</span>
+            <span className="detail-label">联系人</span>
+            <span>{reviewTarget.contactName}</span>
           </div>
           <div>
             <span className="detail-label">联系电话</span>
@@ -157,11 +181,11 @@ export default function AdminDealersPage() {
           </div>
           <div>
             <span className="detail-label">统一社会信用代码</span>
-            <span>{reviewTarget.businessLicense}</span>
+            <span>{reviewTarget.taxId}</span>
           </div>
           <div className="detail-full">
             <span className="detail-label">公司地址</span>
-            <span>{reviewTarget.companyAddress}</span>
+            <span>{reviewTarget.address}</span>
           </div>
           {reviewTarget.reviewNote ? (
             <div className="detail-full">
@@ -182,7 +206,13 @@ export default function AdminDealersPage() {
         open={!!reviewTarget && !!reviewAction}
         onClose={closeReview}
         title={reviewAction === "approve" ? "批准经销商申请" : "拒绝经销商申请"}
-        confirmText={reviewAction === "approve" ? "确认批准" : "确认拒绝"}
+        confirmText={
+          reviewing
+            ? "处理中..."
+            : reviewAction === "approve"
+              ? "确认批准"
+              : "确认拒绝"
+        }
         confirmVariant={reviewAction === "approve" ? "primary" : "danger"}
         onConfirm={handleConfirmReview}
       >
@@ -211,7 +241,8 @@ export default function AdminDealersPage() {
           <p className="eyebrow">Admin Console</p>
           <h1>Dealer 审核</h1>
           <p className="page-subtitle">
-            共 {filtered.length} 条申请，待处理 {applications.filter((a) => a.status === "PENDING").length} 条
+            共 {filtered.length} 条申请，待处理{" "}
+            {applications.filter((a) => a.status === "PENDING").length} 条
           </p>
         </div>
       </div>
@@ -234,13 +265,19 @@ export default function AdminDealersPage() {
         ))}
       </div>
 
-      <DataTable<MockDealerApplication>
-        columns={columns}
-        data={filtered}
-        rowKey={(row) => row.id}
-        emptyTitle="暂无申请"
-        emptyDescription="当前筛选条件下没有经销商申请"
-      />
+      {error ? <p className="form-error">{error}</p> : null}
+
+      {loading ? (
+        <p className="page-loading">加载中...</p>
+      ) : (
+        <DataTable<DealerApplication>
+          columns={columns}
+          data={filtered}
+          rowKey={(row) => row.id}
+          emptyTitle="暂无申请"
+          emptyDescription="当前筛选条件下没有经销商申请"
+        />
+      )}
 
       <DetailModal />
       <ReviewModal />

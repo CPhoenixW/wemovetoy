@@ -1,58 +1,87 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Modal } from "@/components/ui/modal";
-import {
-  mockProducts,
-  formatPrice,
-  type MockProduct,
-} from "@/lib/mocks/products";
+import { addToCart, getCart } from "@/lib/api/cart";
+import { getProductBySlug, listProducts } from "@/lib/api/products";
+import type { Product } from "@/lib/api/types";
+import { formatPrice } from "@/lib/format";
 
-const CATEGORIES = [
-  { id: "ALL", name: "全部" },
-  { id: "户外玩具", name: "户外玩具" },
-  { id: "极限运动", name: "极限运动" },
-  { id: "遥控玩具", name: "遥控玩具" },
-];
-
+/**
+ * TODO(依赖成员2): 分类接口（GET /categories）尚未提供，暂无分类筛选；
+ * 经销商价边界（匿名可见 dealerPrice）由成员 2 在公开 API 修复中处理。
+ */
 export default function DealerProductsPage() {
+  const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("ALL");
-  const [cart, setCart] = useState<Map<number, { product: MockProduct; qty: number }>>(new Map());
-  const [cartPreview, setCartPreview] = useState<MockProduct | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [cartCount, setCartCount] = useState(0);
+  const [addingSlug, setAddingSlug] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ name: string; error?: string } | null>(
+    null,
+  );
 
-  // 只显示上架商品 + 搜索/分类过滤
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      listProducts({ status: "ACTIVE", limit: 100 }),
+      getCart()
+        .then((cart) => cart.items.reduce((sum, i) => sum + i.quantity, 0))
+        .catch(() => 0),
+    ])
+      .then(([data, count]) => {
+        if (cancelled) return;
+        setProducts(data.items);
+        setCartCount(count);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "加载商品失败");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filtered = useMemo(() => {
-    return mockProducts.filter((p) => {
-      if (p.status !== "ACTIVE") return false;
-      if (category !== "ALL" && p.category?.name !== category) return false;
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        return (
-          p.name.toLowerCase().includes(q) ||
-          p.shortDescription.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [search, category]);
+    if (!search.trim()) return products;
+    const q = search.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.shortDescription.toLowerCase().includes(q),
+    );
+  }, [products, search]);
 
-  const cartCount = cart.size;
-
-  function addToCart(product: MockProduct) {
-    setCart((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(product.id);
-      if (existing) {
-        next.set(product.id, { ...existing, qty: existing.qty + 1 });
-      } else {
-        next.set(product.id, { product, qty: 1 });
+  /** 加购必须用 variantId（服务端定价），通过商品详情获取可售 SKU */
+  async function handleAddToCart(product: Product) {
+    setAddingSlug(product.slug);
+    try {
+      const detail = await getProductBySlug(product.slug);
+      const variant = detail.variants[0];
+      if (!variant) {
+        setPreview({ name: product.name, error: "该商品暂无可售 SKU，无法加购" });
+        return;
       }
-      return next;
-    });
-    setCartPreview(product);
+      await addToCart(variant.id, 1);
+      setCartCount((prev) => prev + 1);
+      setPreview({ name: product.name });
+    } catch (err) {
+      setPreview({
+        name: product.name,
+        error: err instanceof Error ? err.message : "加购失败，请重试",
+      });
+    } finally {
+      setAddingSlug(null);
+    }
   }
 
   return (
@@ -71,7 +100,7 @@ export default function DealerProductsPage() {
         </Link>
       </div>
 
-      {/* 工具栏：搜索 + 分类 */}
+      {/* 工具栏：搜索 */}
       <div className="toolbar dealer-toolbar">
         <input
           type="text"
@@ -80,26 +109,18 @@ export default function DealerProductsPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="search-input"
         />
-        <div className="filter-tabs dealer-tabs">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              className={`filter-tab ${category === cat.id ? "active" : ""}`}
-              onClick={() => setCategory(cat.id)}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
       </div>
 
+      {error ? <p className="form-error">{error}</p> : null}
+
       {/* 商品卡片网格 */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <p className="page-loading">加载中...</p>
+      ) : filtered.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">🔍</div>
           <h3>没有匹配的商品</h3>
-          <p>试试调整搜索关键词或分类筛选</p>
+          <p>试试调整搜索关键词</p>
         </div>
       ) : (
         <div className="dealer-product-grid">
@@ -111,8 +132,10 @@ export default function DealerProductsPage() {
                   <StatusBadge status="active" label="上架中" />
                 </div>
                 <p className="dealer-product-desc">{product.shortDescription}</p>
-                {product.category ? (
-                  <span className="dealer-product-category">{product.category.name}</span>
+                {product.categoryId != null ? (
+                  <span className="dealer-product-category">
+                    分类 #{product.categoryId}
+                  </span>
                 ) : null}
               </div>
               <div className="dealer-product-footer">
@@ -125,7 +148,9 @@ export default function DealerProductsPage() {
                         <span className="dealer-price-badge">专属</span>
                       </span>
                     ) : (
-                      <span className="dealer-price muted">{formatPrice(product.price)}</span>
+                      <span className="dealer-price muted">
+                        {formatPrice(product.price)}
+                      </span>
                     )}
                   </span>
                   <span className="dealer-price-row label original">零售价</span>
@@ -136,9 +161,10 @@ export default function DealerProductsPage() {
                 <button
                   type="button"
                   className="btn-primary add-cart-btn"
-                  onClick={() => addToCart(product)}
+                  disabled={addingSlug === product.slug}
+                  onClick={() => handleAddToCart(product)}
                 >
-                  + 加入购物车
+                  {addingSlug === product.slug ? "加购中..." : "+ 加入购物车"}
                 </button>
               </div>
             </div>
@@ -146,18 +172,17 @@ export default function DealerProductsPage() {
         </div>
       )}
 
-      {/* 加购成功提示 Modal */}
-      <Modal
-        open={!!cartPreview}
-        onClose={() => setCartPreview(null)}
-        title="已加入购物车"
-      >
-        <p>
-          <strong>{cartPreview?.name}</strong> 已加入购物车。
-          {cartPreview && cartPreview.dealerPrice !== null
-            ? `享受经销商价 ${formatPrice(cartPreview.dealerPrice)}。`
-            : "该商品暂无经销商专属价格。"}
-        </p>
+      {/* 加购结果提示 Modal */}
+      <Modal open={!!preview} onClose={() => setPreview(null)} title="加购结果">
+        {preview?.error ? (
+          <p>
+            <strong>{preview.name}</strong> 加购失败：{preview.error}
+          </p>
+        ) : (
+          <p>
+            <strong>{preview?.name}</strong> 已加入购物车。
+          </p>
+        )}
       </Modal>
     </div>
   );

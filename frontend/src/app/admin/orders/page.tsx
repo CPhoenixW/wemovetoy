@@ -1,14 +1,15 @@
 "use client";
 
+/**
+ * TODO(依赖成员3): 后端目前没有 Admin 订单列表接口（GET /orders 仅返回当前
+ * 用户自己的订单，见 P1-5）。待成员 3 定义契约后，改为接入真实 API（届时可
+ * 用 PATCH /orders/:id/status 做状态流转）。
+ */
 import { useMemo, useState } from "react";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import {
-  mockOrders,
-  orderStatusMap,
-  type MockOrder,
-} from "@/lib/mocks/cart";
-import { formatPrice } from "@/lib/mocks/products";
+import { mockOrders, type MockOrder } from "@/lib/mocks/cart";
+import { formatPrice, orderStatusMap } from "@/lib/format";
 
 const STATUS_TABS: Array<{ key: string; label: string }> = [
   { key: "ALL", label: "全部" },
@@ -16,6 +17,7 @@ const STATUS_TABS: Array<{ key: string; label: string }> = [
   { key: "PAID", label: "已支付" },
   { key: "SHIPPED", label: "已发货" },
   { key: "DELIVERED", label: "已送达" },
+  { key: "COMPLETED", label: "已完成" },
   { key: "CANCELLED", label: "已取消" },
 ];
 

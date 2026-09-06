@@ -1,9 +1,8 @@
-import { type MockProduct, formatPrice, mockProducts } from "./products";
-
-export interface CartItem {
-  product: MockProduct;
-  quantity: number;
-}
+/**
+ * TODO(依赖成员3): 后端目前没有 Admin 订单列表接口（GET /orders 仅返回当前
+ * 用户自己的订单，见 P1-5）。待成员 3 定义 Admin 订单列表契约后，删除此
+ * mock 并在 Admin 订单页接入真实 API。
+ */
 
 export interface MockOrder {
   id: number;
@@ -16,12 +15,6 @@ export interface MockOrder {
   createdAt: string;
   isDealer: boolean;
 }
-
-export const mockCartItems: CartItem[] = [
-  { product: mockProducts[0], quantity: 2 }, // 滑板 x2
-  { product: mockProducts[3], quantity: 1 }, // 弹跳杆 x1
-  { product: mockProducts[5], quantity: 3 }, // 自行车 x3
-];
 
 export const mockOrders: MockOrder[] = [
   {
@@ -77,29 +70,3 @@ export const mockOrders: MockOrder[] = [
     isDealer: false,
   },
 ];
-
-// 计算购物车总价
-export function calculateCartTotal(items: CartItem[]): number {
-  return items.reduce((sum, item) => {
-    const price = item.product.dealerPrice ?? item.product.price;
-    return sum + price * item.quantity;
-  }, 0);
-}
-
-export function calculateCartCount(items: CartItem[]): number {
-  return items.reduce((sum, item) => sum + item.quantity, 0);
-}
-
-// Order → StatusBadge 映射
-export const orderStatusMap: Record<string, { status: string; label: string }> = {
-  PENDING: { status: "pending", label: "待处理" },
-  PAID: { status: "active", label: "已支付" },
-  SHIPPED: { status: "pending", label: "已发货" },
-  DELIVERED: { status: "approved", label: "已送达" },
-  CANCELLED: { status: "rejected", label: "已取消" },
-};
-
-// 单价计算（区分 dealer price）
-export function getItemUnitPrice(item: CartItem): number {
-  return item.product.dealerPrice ?? item.product.price;
-}

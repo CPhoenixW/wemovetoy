@@ -1,46 +1,140 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
-  mockCartItems,
-  calculateCartTotal,
-  calculateCartCount,
-  getItemUnitPrice,
-  type CartItem,
-} from "@/lib/mocks/cart";
-import { formatPrice } from "@/lib/mocks/products";
+  addToCart,
+  getCart,
+  removeCartItem,
+  updateCartItem,
+} from "@/lib/api/cart";
+import { createOrder } from "@/lib/api/orders";
+import type { CartItem } from "@/lib/api/types";
+import { formatPrice } from "@/lib/format";
 
+/**
+ * TODO(依赖成员3): 后端 GET /cart 目前只返回 variantId + unitPrice（无商品
+ * 名称/图片），由成员 3 注入成员 2 的 SKU Service 后可补齐；届时替换展示。
+ */
 export default function DealerCartPage() {
-  const [items, setItems] = useState<CartItem[]>(mockCartItems);
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [pendingRemove, setPendingRemove] = useState<CartItem | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
 
-  const total = useMemo(() => calculateCartTotal(items), [items]);
-  const count = useMemo(() => calculateCartCount(items), [items]);
+  useEffect(() => {
+    let cancelled = false;
+    getCart()
+      .then((cart) => {
+        if (!cancelled) setItems(cart.items);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "加载购物车失败");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  function updateQty(productId: number, delta: number) {
-    setItems((prev) =>
-      prev
-        .map((item) =>
-          item.product.id === productId
-            ? { ...item, quantity: item.quantity + delta }
-            : item,
-        )
-        .filter((item) => item.quantity > 0),
+  const count = items.reduce((sum, item) => sum + item.quantity, 0);
+  const total = items.reduce(
+    (sum, item) => sum + Number(item.unitPrice) * item.quantity,
+    0,
+  );
+
+  async function refreshCart() {
+    const cart = await getCart();
+    setItems(cart.items);
+  }
+
+  async function changeQty(item: CartItem, delta: number) {
+    const nextQty = item.quantity + delta;
+    setError("");
+    if (nextQty <= 0) {
+      setPendingRemove(item);
+      return;
+    }
+    try {
+      const updated = await updateCartItem(item.id, nextQty);
+      setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "更新数量失败");
+    }
+  }
+
+  async function handleConfirmRemove() {
+    if (!pendingRemove) return;
+    setRemoving(true);
+    try {
+      await removeCartItem(pendingRemove.id);
+      setItems((prev) => prev.filter((i) => i.id !== pendingRemove.id));
+      setPendingRemove(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "删除失败");
+    } finally {
+      setRemoving(false);
+    }
+  }
+
+  /** 提交订单：后端从当前购物车创建订单并清空购物车 */
+  async function handleCheckout() {
+    setCheckoutLoading(true);
+    setError("");
+    try {
+      const order = await createOrder();
+      setOrderNumber(order.orderNumber);
+      await refreshCart();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "提交订单失败");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div>
+        <div className="page-header">
+          <div>
+            <p className="eyebrow">Dealer Portal</p>
+            <h1>购物车</h1>
+          </div>
+        </div>
+        <p className="page-loading">加载中...</p>
+      </div>
     );
   }
 
-  function handleConfirmRemove() {
-    if (!pendingRemove) return;
-    setItems((prev) => prev.filter((i) => i.product.id !== pendingRemove.product.id));
-    setPendingRemove(null);
-  }
-
-  function handleCheckout() {
-    alert("Mock：跳转到结算页，提交订单...");
+  if (orderNumber) {
+    return (
+      <div>
+        <div className="page-header">
+          <div>
+            <p className="eyebrow">Dealer Portal</p>
+            <h1>下单成功</h1>
+          </div>
+        </div>
+        <EmptyState
+          title="订单已提交"
+          description={`订单号 ${orderNumber}，我们已收到你的订单。`}
+          action={
+            <Link href="/dealer/products" className="btn-primary">
+              继续购物
+            </Link>
+          }
+        />
+      </div>
+    );
   }
 
   if (items.length === 0) {
@@ -75,53 +169,33 @@ export default function DealerCartPage() {
         </div>
       </div>
 
+      {error ? <p className="form-error">{error}</p> : null}
+
       <div className="cart-layout">
         {/* 左侧：购物车列表 */}
         <div className="cart-items">
           {items.map((item) => {
-            const unitPrice = getItemUnitPrice(item);
+            const unitPrice = Number(item.unitPrice);
             const subtotal = unitPrice * item.quantity;
             return (
-              <div key={item.product.id} className="cart-item">
+              <div key={item.id} className="cart-item">
                 <div className="cart-item-info">
-                  <div className="cart-item-name">
-                    {item.product.name}
-                    {item.product.dealerPrice !== null ? (
-                      <span className="dealer-price-badge">专属价</span>
-                    ) : null}
-                  </div>
-                  <div className="cart-item-desc">{item.product.shortDescription}</div>
-                  {item.product.category ? (
-                    <span className="cart-item-category">{item.product.category.name}</span>
-                  ) : null}
+                  <div className="cart-item-name">SKU #{item.variantId}</div>
+                  <div className="cart-item-desc">由服务端按经销商价定价</div>
                 </div>
 
                 <div className="cart-item-price-col">
                   <div className="cart-item-unit">
                     <span className="label">单价</span>
-                    <span className="value">
-                      {item.product.dealerPrice !== null ? (
-                        <span className="dealer-price">{formatPrice(unitPrice)}</span>
-                      ) : (
-                        formatPrice(unitPrice)
-                      )}
-                    </span>
+                    <span className="value">{formatPrice(unitPrice)}</span>
                   </div>
-                  {item.product.dealerPrice !== null ? (
-                    <div className="cart-item-unit original">
-                      <span className="label">零售价</span>
-                      <span className="value">
-                        <span className="original-price">{formatPrice(item.product.price)}</span>
-                      </span>
-                    </div>
-                  ) : null}
                 </div>
 
                 <div className="cart-item-qty">
                   <button
                     type="button"
                     className="qty-btn"
-                    onClick={() => updateQty(item.product.id, -1)}
+                    onClick={() => changeQty(item, -1)}
                   >
                     −
                   </button>
@@ -129,7 +203,7 @@ export default function DealerCartPage() {
                   <button
                     type="button"
                     className="qty-btn"
-                    onClick={() => updateQty(item.product.id, 1)}
+                    onClick={() => changeQty(item, 1)}
                   >
                     +
                   </button>
@@ -159,18 +233,6 @@ export default function DealerCartPage() {
             <span>商品数量</span>
             <span>{count} 件</span>
           </div>
-          <div className="summary-row">
-            <span>
-              {items.some((i) => i.product.dealerPrice !== null)
-                ? "经销商价优惠"
-                : "小计"}
-            </span>
-            <span>
-              {items.some((i) => i.product.dealerPrice !== null)
-                ? `已享优惠`
-                : formatPrice(total)}
-            </span>
-          </div>
           <div className="summary-divider" />
           <div className="summary-row total">
             <span>合计</span>
@@ -179,9 +241,10 @@ export default function DealerCartPage() {
           <button
             type="button"
             className="btn-primary checkout-btn"
+            disabled={checkoutLoading}
             onClick={handleCheckout}
           >
-            提交订单
+            {checkoutLoading ? "提交中..." : "提交订单"}
           </button>
           <Link href="/dealer/products" className="link-secondary continue-link">
             ← 继续购物
@@ -194,12 +257,12 @@ export default function DealerCartPage() {
         open={!!pendingRemove}
         onClose={() => setPendingRemove(null)}
         title="确认移除"
-        confirmText="移除"
+        confirmText={removing ? "移除中..." : "移除"}
         confirmVariant="danger"
         onConfirm={handleConfirmRemove}
       >
         <p>
-          确定要从购物车中移除 <strong>{pendingRemove?.product.name}</strong> 吗？
+          确定要从购物车中移除 <strong>SKU #{pendingRemove?.variantId}</strong> 吗？
         </p>
       </Modal>
     </div>
