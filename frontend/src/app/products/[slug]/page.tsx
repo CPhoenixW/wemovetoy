@@ -108,10 +108,8 @@ export default async function ProductDetailPage({
                     <span className="variant-list__price">
                       {formatPrice(variant.price)}
                     </span>
-                    <span className="variant-list__stock">
-                      {variant.stock > 0
-                        ? `${variant.stock} in stock`
-                        : "Out of stock"}
+                    <span className="variant-list__availability">
+                      {variant.isPurchasable ? "In stock" : "Out of stock"}
                     </span>
                   </li>
                 ))}

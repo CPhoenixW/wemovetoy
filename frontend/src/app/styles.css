@@ -1008,7 +1008,7 @@ button:disabled { cursor: wait; opacity: 0.7; }
 }
 .variant-list__name { font-weight: 600; }
 .variant-list__price { color: #005f57; font-weight: 700; }
-.variant-list__stock { color: #60706a; font-size: 13px; }
+.variant-list__availability { color: #60706a; font-size: 13px; }
 
 @media (max-width: 800px) {
   .product-detail { grid-template-columns: 1fr; }
