@@ -52,3 +52,718 @@ button:disabled { cursor: wait; opacity: 0.7; }
 @media (max-width: 640px) {
   .site-header, .page-shell { padding-left: 20px; padding-right: 20px; }
 }
+
+/* ============ Admin / Dealer 后台布局 ============ */
+
+.admin-shell,
+.dealer-shell {
+  display: flex;
+  min-height: calc(100vh - 64px);
+  margin-top: 64px;
+}
+
+/* 侧边栏 */
+.admin-sidebar,
+.dealer-sidebar {
+  background: #152028;
+  color: #f7f8f6;
+  width: 240px;
+  padding: 32px 0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 64px;
+  bottom: 0;
+  left: 0;
+}
+
+.admin-brand,
+.dealer-brand {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 0 32px 32px;
+  text-decoration: none;
+  border-bottom: 1px solid #2a3a34;
+  margin-bottom: 16px;
+}
+
+.admin-nav,
+.dealer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-nav a,
+.dealer-nav a {
+  color: #c5cfca;
+  padding: 12px 32px;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.admin-nav a:hover,
+.dealer-nav a:hover {
+  background: #24302c;
+  color: #ffffff;
+}
+
+/* 主内容区 */
+.admin-main,
+.dealer-main {
+  flex: 1;
+  margin-left: 240px;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-topbar,
+.dealer-topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #dce1df;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 32px;
+  min-height: 56px;
+}
+
+.admin-user,
+.dealer-user {
+  font-size: 14px;
+  color: #60706a;
+}
+
+.admin-content,
+.dealer-content {
+  padding: 48px 32px;
+  flex: 1;
+}
+
+.logout-btn {
+  background: transparent;
+  border: 1px solid #a9b5b0;
+  color: #60706a;
+  font-size: 13px;
+  padding: 6px 16px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: #f0f2f1;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .admin-sidebar,
+  .dealer-sidebar {
+    width: 60px;
+    padding: 16px 0;
+  }
+  .admin-brand,
+  .dealer-brand {
+    padding: 0 16px 16px;
+    font-size: 14px;
+  }
+  .admin-nav a,
+  .dealer-nav a {
+    padding: 12px 16px;
+    font-size: 12px;
+  }
+  .admin-main,
+  .dealer-main {
+    margin-left: 60px;
+  }
+}
+
+/* ============ 共享 UI 组件 ============ */
+
+/* StatusBadge */
+.status-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* FormField */
+.form-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.page-loading {
+  color: #5b6b66;
+  padding: 32px 0;
+  text-align: center;
+}
+.product-form {
+  display: grid;
+  gap: 16px;
+  max-width: 720px;
+}
+.form-field {
+  display: grid;
+  gap: 6px;
+}
+.form-field label {
+  font-size: 14px;
+  color: #152028;
+  font-weight: 500;
+}
+.form-field input,
+.form-field textarea,
+.form-field select {
+  border: 1px solid #a9b5b0;
+  border-radius: 4px;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+}
+.form-field textarea { min-height: 100px; resize: vertical; }
+.form-field select { min-height: 40px; }
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+  outline: none;
+  border-color: #005f57;
+  box-shadow: 0 0 0 3px rgba(0, 95, 87, 0.1);
+}
+.form-field.has-error input,
+.form-field.has-error textarea,
+.form-field.has-error select {
+  border-color: #b42318;
+}
+.required { color: #b42318; }
+.field-error { font-size: 12px; color: #b42318; }
+
+/* 通用按钮 */
+.btn-primary {
+  background: #005f57;
+  border: 1px solid #005f57;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 20px;
+  border-radius: 4px;
+}
+.btn-primary:hover { background: #004a44; }
+.btn-secondary {
+  background: transparent;
+  border: 1px solid #a9b5b0;
+  color: #152028;
+  cursor: pointer;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 20px;
+  border-radius: 4px;
+}
+.btn-secondary:hover { background: #f0f2f1; }
+.btn-danger {
+  background: #b42318;
+  border: 1px solid #b42318;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 20px;
+  border-radius: 4px;
+}
+.btn-danger:hover { background: #991b1b; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(21, 32, 40, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: #ffffff;
+  border-radius: 8px;
+  min-width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.modal-header h3 { margin: 0; font-size: 16px; }
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #60706a;
+  min-height: auto;
+  padding: 0;
+}
+.modal-body { padding: 24px; }
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* EmptyState */
+.empty-state {
+  text-align: center;
+  padding: 64px 24px;
+  color: #60706a;
+}
+.empty-icon { font-size: 48px; margin-bottom: 16px; }
+.empty-state h3 { color: #152028; font-size: 16px; margin: 0 0 8px; }
+.empty-state p { margin: 0; font-size: 14px; }
+.empty-action { margin-top: 20px; }
+
+/* DataTable */
+.table-wrapper {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.data-table thead {
+  background: #f7f8f6;
+  border-bottom: 1px solid #dce1df;
+}
+.data-table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: #60706a;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.data-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f2f1;
+  color: #152028;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr.clickable { cursor: pointer; }
+.data-table tbody tr.clickable:hover { background: #f7f8f6; }
+.table-loading {
+  text-align: center;
+  padding: 48px;
+  color: #60706a;
+}
+
+/* ============ 商品管理页面 ============ */
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.page-subtitle {
+  margin: 8px 0 0;
+  color: #60706a;
+  font-size: 14px;
+}
+.toolbar {
+  margin-bottom: 16px;
+}
+.search-input {
+  border: 1px solid #a9b5b0;
+  border-radius: 4px;
+  font: inherit;
+  min-height: 40px;
+  padding: 8px 12px;
+  width: 320px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.search-input:focus {
+  outline: none;
+  border-color: #005f57;
+}
+.col-id { width: 60px; }
+.col-price { width: 110px; }
+.col-actions { width: 140px; }
+.link-primary {
+  color: #005f57;
+  text-decoration: none;
+  font-weight: 500;
+}
+.link-primary:hover { text-decoration: underline; }
+.link-danger {
+  background: none;
+  border: none;
+  color: #b42318;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+}
+.link-danger:hover { text-decoration: underline; }
+.row-actions {
+  display: flex;
+  gap: 16px;
+}
+
+/* ============ Dealer 审核页面 ============ */
+
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.filter-tab {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 20px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-tab:hover { border-color: #005f57; }
+.filter-tab.active {
+  background: #005f57;
+  border-color: #005f57;
+  color: #ffffff;
+}
+.filter-count {
+  background: #e5e7eb;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+}
+.filter-tab.active .filter-count {
+  background: rgba(255, 255, 255, 0.25);
+}
+.link-success {
+  background: none;
+  border: none;
+  color: #065f46;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+}
+.link-success:hover { text-decoration: underline; }
+.link-secondary {
+  background: none;
+  border: none;
+  color: #60706a;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  padding: 0;
+}
+.link-secondary:hover { text-decoration: underline; }
+.company-name { font-weight: 500; color: #152028; }
+.company-contact { font-size: 12px; color: #60706a; margin-top: 2px; }
+
+/* 详情 Modal 网格 */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.detail-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.detail-full { grid-column: 1 / -1; }
+.detail-label {
+  font-size: 12px;
+  color: #60706a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+/* ============ Dealer Portal 商品目录 ============ */
+
+.dealer-header { padding-bottom: 8px; }
+.cart-btn { min-height: 40px; }
+
+.dealer-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.dealer-tabs { margin-bottom: 0; }
+
+.dealer-product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.dealer-product-card {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.dealer-product-card:hover {
+  border-color: #005f57;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.dealer-product-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.dealer-product-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #152028;
+}
+.dealer-product-desc {
+  font-size: 13px;
+  color: #60706a;
+  margin: 0;
+  line-height: 1.5;
+}
+.dealer-product-category {
+  font-size: 12px;
+  color: #005f57;
+  background: rgba(0, 95, 87, 0.08);
+  padding: 3px 10px;
+  border-radius: 12px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.dealer-product-footer {
+  border-top: 1px solid #f0f2f1;
+  padding-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.dealer-product-price-area { display: flex; flex-direction: column; gap: 4px; }
+.dealer-price-row { font-size: 12px; }
+.dealer-price-row.label { color: #60706a; }
+.dealer-price-row.label.original { text-decoration: line-through; color: #a9b5b0; }
+.dealer-price-row.value { font-weight: 600; font-size: 16px; color: #152028; }
+.dealer-price-row.value.original { font-size: 12px; font-weight: 400; color: #a9b5b0; text-decoration: line-through; }
+.dealer-price { display: inline-flex; align-items: center; gap: 6px; color: #005f57; }
+.dealer-price.muted { color: #a9b5b0; }
+.dealer-price-badge {
+  font-size: 10px;
+  background: #005f57;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.add-cart-btn { white-space: nowrap; }
+
+/* ============ 购物车 ============ */
+
+.cart-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: flex-start;
+  margin-top: 24px;
+}
+@media (max-width: 800px) {
+  .cart-layout { grid-template-columns: 1fr; }
+}
+
+.cart-items { display: flex; flex-direction: column; gap: 12px; }
+
+.cart-item {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 2fr auto auto auto auto;
+  gap: 16px;
+  align-items: center;
+}
+@media (max-width: 900px) {
+  .cart-item {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.cart-item-name {
+  font-weight: 600;
+  font-size: 15px;
+  color: #152028;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cart-item-desc {
+  font-size: 12px;
+  color: #60706a;
+  margin: 4px 0;
+}
+.cart-item-category {
+  font-size: 11px;
+  color: #60706a;
+  background: #f0f2f1;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.cart-item-price-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+  min-width: 100px;
+}
+.cart-item-price-col .label { font-size: 11px; color: #a9b5b0; }
+.cart-item-price-col .value { font-size: 14px; font-weight: 500; color: #152028; }
+.cart-item-price-col.original .value { font-size: 11px; color: #a9b5b0; text-decoration: line-through; }
+.original-price { text-decoration: line-through; color: #a9b5b0; font-size: 11px; }
+
+.cart-item-qty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #dce1df;
+  background: #ffffff;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  color: #152028;
+  transition: background 0.15s;
+}
+.qty-btn:hover { background: #f0f2f1; }
+.qty-value { min-width: 20px; text-align: center; font-weight: 500; font-size: 14px; }
+
+.cart-item-subtotal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+  min-width: 80px;
+}
+.cart-item-subtotal .label { font-size: 11px; color: #a9b5b0; }
+.cart-item-subtotal .value { font-size: 15px; font-weight: 600; color: #152028; }
+
+.remove-btn { font-size: 12px; white-space: nowrap; }
+
+/* 结算摘要 */
+.cart-summary {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  padding: 20px;
+  position: sticky;
+  top: 20px;
+}
+.cart-summary h3 { margin: 0 0 16px; font-size: 15px; font-weight: 600; color: #152028; }
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+  color: #60706a;
+}
+.summary-row.total {
+  font-size: 16px;
+  font-weight: 700;
+  color: #152028;
+  padding-top: 12px;
+}
+.summary-divider {
+  height: 1px;
+  background: #dce1df;
+  margin: 10px 0;
+}
+.checkout-btn { width: 100%; margin-top: 16px; }
+.continue-link { display: block; text-align: center; margin-top: 12px; font-size: 13px; }
+
+/* ============ Admin 订单管理 ============ */
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: #005f57;
+}
+.col-price { text-align: right; font-weight: 600; }
+
+.order-buyer-email { font-size: 14px; color: #152028; }
+.order-dealer-tag {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #005f57;
+  background: rgba(0, 95, 87, 0.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.order-user-tag {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #60706a;
+  background: #f0f2f1;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.orders-toolbar { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.orders-tabs { margin-bottom: 0; }
+.filter-count {
+  display: inline-block;
+  font-size: 11px;
+  color: #60706a;
+  background: #f0f2f1;
+  padding: 0 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+}
