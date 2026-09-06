@@ -157,3 +157,90 @@ export interface DealerProduct {
   category: CategoryRef | null;
   variants: DealerVariant[];
 }
+
+// ===== 购物车（成员3 契约，PR #10；服务端定价/库存） =====
+export interface CartItem {
+  id: number;
+  variantId: number;
+  sku: string;
+  productName: string;
+  variantName: string;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+  availableStock: number;
+  isPurchasable: boolean;
+}
+
+export interface Cart {
+  id: number;
+  items: CartItem[];
+  itemCount: number;
+  totalAmount: number;
+  updatedAt: string;
+}
+
+// ===== 订单（成员3 契约，PR #10） =====
+export type OrderStatus =
+  | "PENDING"
+  | "PAID"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export interface OrderItem {
+  id: number;
+  variantId: number;
+  sku: string;
+  productName: string;
+  variantName: string | null;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export interface Order {
+  id: number;
+  orderNumber: string;
+  status: OrderStatus;
+  totalAmount: number;
+  shippingName: string | null;
+  shippingPhone: string | null;
+  shippingAddress: string | null;
+  remark: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: OrderItem[];
+}
+
+export interface CreateOrderInput {
+  shippingName?: string;
+  shippingPhone?: string;
+  shippingAddress?: string;
+  remark?: string;
+}
+
+/** Admin 订单列表项（GET /admin/orders） */
+export interface AdminOrderListItem {
+  id: number;
+  orderNumber: string;
+  status: OrderStatus;
+  totalAmount: number;
+  itemCount: number;
+  customer: {
+    id: number;
+    email: string;
+    name: string | null;
+    role: string;
+  };
+  dealerCompany: null;
+  createdAt: string;
+}
+
+export interface AdminOrderQuery {
+  page?: number;
+  pageSize?: number;
+  status?: OrderStatus;
+  search?: string;
+}

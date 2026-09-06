@@ -866,3 +866,28 @@ button:disabled { cursor: wait; opacity: 0.7; }
 .dealer-variant-stock { display: block; font-size: 12px; font-weight: 400; color: #60706a; }
 .dealer-variant-row .add-cart-btn { padding: 6px 14px; font-size: 13px; }
 .dealer-variant-row .add-cart-btn:disabled { background: #c6cfcb; cursor: not-allowed; }
+
+/* ============ 阶段B 购物车/订单补充样式 ============ */
+
+.cart-item-info { min-width: 0; }
+.cart-item-name { margin: 0; }
+.cart-item-variant { margin: 4px 0 0; font-size: 12px; color: #60706a; }
+.cart-item-warn { margin: 6px 0 0; font-size: 12px; color: #c0392b; }
+.cart-item-price { font-size: 14px; font-weight: 500; color: #152028; white-space: nowrap; }
+.cart-item-subtotal { font-size: 15px; font-weight: 600; color: #152028; white-space: nowrap; }
+.qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.link-danger:disabled, .link-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.order-success {
+  background: #ffffff;
+  border: 1px solid #bfe6d4;
+  border-radius: 12px;
+  padding: 40px 24px;
+  text-align: center;
+  margin-top: 24px;
+}
+.order-success h3 { margin: 12px 0 8px; color: #0a7a4f; }
+.order-success p { color: #4a5a54; }
+
+.modal-tip { font-size: 12px; color: #60706a; background: #f0f2f1; border-radius: 8px; padding: 8px 12px; margin: 0 0 16px; }
+.muted-text { color: #a9b5b0; }
