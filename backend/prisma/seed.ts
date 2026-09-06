@@ -143,16 +143,6 @@ async function main() {
 
   console.log(`Category created: ${category.name}`);
 
-  // 创建用户
-  for (const user of seedUsers) {
-    await prisma.user.upsert({
-      where: { email: user.email },
-      update: { ...user, passwordHash },
-      create: { ...user, passwordHash },
-    });
-  }
-  console.log(`Seeded ${seedUsers.length} development users.`);
-
   // 创建商品
   for (const productData of seedProducts) {
     await prisma.product.upsert({
