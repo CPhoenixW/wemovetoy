@@ -1,3 +1,4 @@
+import { clearToken, getToken } from "./auth";
 import type { ApiFailure, ApiSuccess } from "./types";
 
 const apiBaseUrl =
@@ -23,6 +24,11 @@ export async function apiRequest<T>(
     headers.set("content-type", "application/json");
   }
 
+  const token = getToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
   const response = await fetch(`${apiBaseUrl}/${path.replace(/^\//, "")}`, {
     ...init,
     headers,
@@ -30,6 +36,9 @@ export async function apiRequest<T>(
   const payload = (await response.json()) as ApiSuccess<T> | ApiFailure;
 
   if (!response.ok || !payload.success) {
+    if (response.status === 401) {
+      clearToken();
+    }
     const message = Array.isArray(payload.message)
       ? payload.message.join("；")
       : payload.message;
