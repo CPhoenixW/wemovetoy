@@ -1,3 +1,4 @@
+import { apiRequest } from "./client";
 import type { AuthenticatedUser } from "./types";
 
 const TOKEN_KEY = "wemove.accessToken";
@@ -17,17 +18,11 @@ export function clearToken(): void {
   sessionStorage.removeItem(USER_KEY);
 }
 
-export function getCurrentUser(): AuthenticatedUser | null {
-  if (typeof window === "undefined") return null;
-  const raw = sessionStorage.getItem(USER_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as AuthenticatedUser;
-  } catch {
-    return null;
-  }
-}
-
 export function setCurrentUser(user: AuthenticatedUser): void {
   sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+/** 服务端校验登录态并返回最新用户信息（含角色） */
+export function getMe(): Promise<AuthenticatedUser> {
+  return apiRequest("auth/me");
 }
