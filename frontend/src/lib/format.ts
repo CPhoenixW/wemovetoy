@@ -18,7 +18,7 @@ export function formatDate(iso: string | null): string {
 
 export const productStatusMap: Record<string, { status: string; label: string }> = {
   ACTIVE: { status: "active", label: "上架中" },
-  INACTIVE: { status: "inactive", label: "已下架" },
+  ARCHIVED: { status: "inactive", label: "已下架" },
   DRAFT: { status: "pending", label: "草稿" },
 };
 

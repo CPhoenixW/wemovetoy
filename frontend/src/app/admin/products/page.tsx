@@ -16,7 +16,7 @@ import { formatPrice, productStatusMap } from "@/lib/format";
 const statusTabs: { label: string; value?: ProductStatus }[] = [
   { label: "全部" },
   { label: "上架中", value: "ACTIVE" },
-  { label: "已下架", value: "INACTIVE" },
+  { label: "已下架", value: "ARCHIVED" },
   { label: "草稿", value: "DRAFT" },
 ];
 
@@ -25,6 +25,9 @@ export default function AdminProductsPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<ProductStatus | undefined>(undefined);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AdminProduct | null>(null);
@@ -35,20 +38,26 @@ export default function AdminProductsPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await listAdminProducts({ limit: 100, search, status });
+      const data = await listAdminProducts({ limit: pageSize, page, search, status });
       setProducts(data.items);
       setTotal(data.total);
+      setTotalPages(data.totalPages ?? Math.ceil(data.total / pageSize));
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载商品失败");
     } finally {
       setLoading(false);
     }
-  }, [search, status]);
+  }, [search, status, page, pageSize]);
 
   useEffect(() => {
     const timer = setTimeout(load, search ? 300 : 0);
     return () => clearTimeout(timer);
   }, [load, search]);
+
+  // 切换筛选/搜索时回到第 1 页
+  useEffect(() => {
+    setPage(1);
+  }, [status, search]);
 
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
@@ -193,6 +202,30 @@ export default function AdminProductsPage() {
           emptyDescription="可调整筛选条件，或点击右上角「新增商品」"
         />
       )}
+
+      {totalPages > 1 ? (
+        <div className="pagination">
+          <button
+            type="button"
+            className="btn-secondary page-btn"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            上一页
+          </button>
+          <span className="page-info">
+            第 {page} / {totalPages} 页，共 {total} 条
+          </span>
+          <button
+            type="button"
+            className="btn-secondary page-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            下一页
+          </button>
+        </div>
+      ) : null}
 
       <Modal
         open={!!deleteTarget}

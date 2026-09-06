@@ -22,6 +22,107 @@ const FILTER_TABS: Array<{ key: "ALL" | DealerApplicationStatus; label: string }
   { key: "REJECTED", label: "已拒绝" },
 ];
 
+// ============ 详情 Modal（定义在组件外，避免输入失焦） ============
+interface DetailModalProps {
+  open: boolean;
+  target: DealerApplication | null;
+  onClose: () => void;
+}
+
+function DetailModal({ open, target, onClose }: DetailModalProps) {
+  if (!target) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="申请详情">
+      <div className="detail-grid">
+        <div>
+          <span className="detail-label">公司名称</span>
+          <span>{target.companyName}</span>
+        </div>
+        <div>
+          <span className="detail-label">联系人</span>
+          <span>{target.contactName}</span>
+        </div>
+        <div>
+          <span className="detail-label">联系电话</span>
+          <span>{target.contactPhone}</span>
+        </div>
+        <div>
+          <span className="detail-label">统一社会信用代码</span>
+          <span>{target.taxId}</span>
+        </div>
+        <div className="detail-full">
+          <span className="detail-label">公司地址</span>
+          <span>{target.address}</span>
+        </div>
+        {target.reviewNote ? (
+          <div className="detail-full">
+            <span className="detail-label">审核备注</span>
+            <span>{target.reviewNote}</span>
+          </div>
+        ) : null}
+      </div>
+    </Modal>
+  );
+}
+
+// ============ 审核 Modal（定义在组件外，textarea 不会因父渲染失焦） ============
+interface ReviewModalProps {
+  open: boolean;
+  target: DealerApplication | null;
+  action: "approve" | "reject" | null;
+  note: string;
+  reviewing: boolean;
+  onNoteChange: (v: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}
+
+function ReviewModal({
+  open,
+  target,
+  action,
+  note,
+  reviewing,
+  onNoteChange,
+  onClose,
+  onConfirm,
+}: ReviewModalProps) {
+  if (!target || !action) return null;
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={action === "approve" ? "批准经销商申请" : "拒绝经销商申请"}
+      confirmText={
+        reviewing
+          ? "处理中..."
+          : action === "approve"
+            ? "确认批准"
+            : "确认拒绝"
+      }
+      confirmVariant={action === "approve" ? "primary" : "danger"}
+      confirmDisabled={reviewing}
+      onConfirm={onConfirm}
+    >
+      <p>
+        即将对 <strong>{target.companyName}</strong> 的申请进行
+        <strong>{action === "approve" ? "批准" : "拒绝"}</strong>操作。
+      </p>
+      <div className="form-field" style={{ marginTop: 16 }}>
+        <label htmlFor="review-note">审核备注（可选）</label>
+        <textarea
+          id="review-note"
+          value={note}
+          onChange={(e) => onNoteChange(e.target.value)}
+          placeholder="填写审核意见或拒绝原因..."
+          rows={3}
+          disabled={reviewing}
+        />
+      </div>
+    </Modal>
+  );
+}
+
 export default function AdminDealersPage() {
   const [applications, setApplications] = useState<DealerApplication[]>([]);
   const [filter, setFilter] = useState<"ALL" | DealerApplicationStatus>("ALL");
@@ -160,83 +261,6 @@ export default function AdminDealersPage() {
     }
   }
 
-  // 详情 Modal（已审核的申请）
-  function DetailModal() {
-    if (!reviewTarget || reviewAction) return null;
-    return (
-      <Modal
-        open={!!reviewTarget && !reviewAction}
-        onClose={closeReview}
-        title="申请详情"
-      >
-        <div className="detail-grid">
-          <div>
-            <span className="detail-label">公司名称</span>
-            <span>{reviewTarget.companyName}</span>
-          </div>
-          <div>
-            <span className="detail-label">联系人</span>
-            <span>{reviewTarget.contactName}</span>
-          </div>
-          <div>
-            <span className="detail-label">联系电话</span>
-            <span>{reviewTarget.contactPhone}</span>
-          </div>
-          <div>
-            <span className="detail-label">统一社会信用代码</span>
-            <span>{reviewTarget.taxId}</span>
-          </div>
-          <div className="detail-full">
-            <span className="detail-label">公司地址</span>
-            <span>{reviewTarget.address}</span>
-          </div>
-          {reviewTarget.reviewNote ? (
-            <div className="detail-full">
-              <span className="detail-label">审核备注</span>
-              <span>{reviewTarget.reviewNote}</span>
-            </div>
-          ) : null}
-        </div>
-      </Modal>
-    );
-  }
-
-  // 审核 Modal（批准/拒绝待审核申请）
-  function ReviewModal() {
-    if (!reviewTarget || !reviewAction) return null;
-    return (
-      <Modal
-        open={!!reviewTarget && !!reviewAction}
-        onClose={closeReview}
-        title={reviewAction === "approve" ? "批准经销商申请" : "拒绝经销商申请"}
-        confirmText={
-          reviewing
-            ? "处理中..."
-            : reviewAction === "approve"
-              ? "确认批准"
-              : "确认拒绝"
-        }
-        confirmVariant={reviewAction === "approve" ? "primary" : "danger"}
-        onConfirm={handleConfirmReview}
-      >
-        <p>
-          即将对 <strong>{reviewTarget.companyName}</strong> 的申请进行
-          <strong>{reviewAction === "approve" ? "批准" : "拒绝"}</strong>操作。
-        </p>
-        <div className="form-field" style={{ marginTop: 16 }}>
-          <label htmlFor="review-note">审核备注（可选）</label>
-          <textarea
-            id="review-note"
-            value={reviewNote}
-            onChange={(e) => setReviewNote(e.target.value)}
-            placeholder="填写审核意见或拒绝原因..."
-            rows={3}
-          />
-        </div>
-      </Modal>
-    );
-  }
-
   return (
     <div>
       <div className="page-header">
@@ -282,8 +306,21 @@ export default function AdminDealersPage() {
         />
       )}
 
-      <DetailModal />
-      <ReviewModal />
+      <DetailModal
+        open={!!reviewTarget && !reviewAction}
+        target={reviewTarget}
+        onClose={closeReview}
+      />
+      <ReviewModal
+        open={!!reviewTarget && !!reviewAction}
+        target={reviewTarget}
+        action={reviewAction}
+        note={reviewNote}
+        reviewing={reviewing}
+        onNoteChange={setReviewNote}
+        onClose={closeReview}
+        onConfirm={handleConfirmReview}
+      />
     </div>
   );
 }

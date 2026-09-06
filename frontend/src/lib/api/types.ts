@@ -62,7 +62,7 @@ export interface Paginated<T> {
 }
 
 // ===== 商品（成员2 契约，PR #5） =====
-export type ProductStatus = "ACTIVE" | "INACTIVE" | "DRAFT";
+export type ProductStatus = "ACTIVE" | "ARCHIVED" | "DRAFT";
 
 export interface CategoryRef {
   id: number;
@@ -118,7 +118,7 @@ export interface ProductInput {
   dealerPrice?: number | null;
   ageMin?: number | null;
   ageMax?: number | null;
-  playEnvironment?: string;
+  playEnvironment?: string | null;
   status?: ProductStatus;
   features?: string[];
   specifications?: Record<string, unknown>;

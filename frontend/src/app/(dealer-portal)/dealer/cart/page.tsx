@@ -93,6 +93,8 @@ export default function DealerCartPage() {
   }
 
   const hasUnavailable = cart?.items.some((i) => !i.isPurchasable) ?? false;
+  const overStock = cart?.items.some((i) => i.quantity > i.availableStock) ?? false;
+  const checkoutDisabled = hasUnavailable || overStock || submitting;
 
   return (
     <div>
@@ -205,10 +207,13 @@ export default function DealerCartPage() {
             {hasUnavailable ? (
               <p className="cart-item-warn">存在不可售商品，请先处理</p>
             ) : null}
+            {overStock ? (
+              <p className="cart-item-warn">存在超出可用库存的商品，请调整数量</p>
+            ) : null}
             <button
               type="button"
               className="btn-primary checkout-btn"
-              disabled={hasUnavailable}
+              disabled={checkoutDisabled}
               onClick={() => setCheckoutOpen(true)}
             >
               提交订单
@@ -223,6 +228,7 @@ export default function DealerCartPage() {
         title="确认下单"
         confirmText={submitting ? "提交中..." : "确认提交订单"}
         cancelText="取消"
+        confirmDisabled={submitting}
         onConfirm={handleCheckout}
       >
         <p className="modal-tip">

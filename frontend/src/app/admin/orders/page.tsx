@@ -36,6 +36,9 @@ export default function AdminOrdersPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<OrderStatus | undefined>(undefined);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -44,20 +47,26 @@ export default function AdminOrdersPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await listAdminOrders({ pageSize: 100, search, status });
+      const data = await listAdminOrders({ page, pageSize, search, status });
       setOrders(data.items);
       setTotal(data.total);
+      setTotalPages(data.totalPages ?? Math.ceil(data.total / pageSize));
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载订单失败");
     } finally {
       setLoading(false);
     }
-  }, [search, status]);
+  }, [search, status, page, pageSize]);
 
   useEffect(() => {
     const timer = setTimeout(load, search ? 300 : 0);
     return () => clearTimeout(timer);
   }, [load, search]);
+
+  // 切换筛选/搜索时回到第 1 页
+  useEffect(() => {
+    setPage(1);
+  }, [status, search]);
 
   async function handleTransition(order: AdminOrderListItem, next: OrderStatus) {
     setBusyId(order.id);
@@ -178,6 +187,30 @@ export default function AdminOrdersPage() {
           emptyDescription="可调整状态筛选或搜索关键词"
         />
       )}
+
+      {totalPages > 1 ? (
+        <div className="pagination">
+          <button
+            type="button"
+            className="btn-secondary page-btn"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            上一页
+          </button>
+          <span className="page-info">
+            第 {page} / {totalPages} 页，共 {total} 条
+          </span>
+          <button
+            type="button"
+            className="btn-secondary page-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            下一页
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

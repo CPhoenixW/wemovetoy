@@ -13,7 +13,7 @@ interface ProductFormProps {
 const STATUS_OPTIONS: Array<{ value: ProductStatus; label: string }> = [
   { value: "DRAFT", label: "草稿" },
   { value: "ACTIVE", label: "上架" },
-  { value: "INACTIVE", label: "下架" },
+  { value: "ARCHIVED", label: "下架" },
 ];
 
 export function ProductForm({ initial, submitText, onSubmit }: ProductFormProps) {
@@ -73,16 +73,17 @@ export function ProductForm({ initial, submitText, onSubmit }: ProductFormProps)
       description: form.description.trim(),
       price,
       status: form.status,
+      // 显式传 null/[]/{}，确保编辑时可真正清空旧值（而非省略字段保留旧值）
+      dealerPrice: form.dealerPrice.trim() ? Number(form.dealerPrice) : null,
+      categoryId: form.categoryId.trim() ? Number(form.categoryId) : null,
+      ageMin: form.ageMin.trim() ? Number(form.ageMin) : null,
+      ageMax: form.ageMax.trim() ? Number(form.ageMax) : null,
+      playEnvironment: form.playEnvironment.trim() || null,
+      features: form.features.trim()
+        ? form.features.split(",").map((f) => f.trim()).filter(Boolean)
+        : [],
+      specifications: specifications ?? {},
     };
-    if (form.dealerPrice.trim()) input.dealerPrice = Number(form.dealerPrice);
-    if (form.categoryId.trim()) input.categoryId = Number(form.categoryId);
-    if (form.ageMin.trim()) input.ageMin = Number(form.ageMin);
-    if (form.ageMax.trim()) input.ageMax = Number(form.ageMax);
-    if (form.playEnvironment.trim()) input.playEnvironment = form.playEnvironment.trim();
-    if (form.features.trim()) {
-      input.features = form.features.split(",").map((f) => f.trim()).filter(Boolean);
-    }
-    if (specifications) input.specifications = specifications;
 
     setSubmitting(true);
     try {
