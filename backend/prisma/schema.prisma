@@ -151,6 +151,7 @@ model OrderItem {
   id          Int      @id @default(autoincrement())
   orderId     Int
   variantId   Int
+  sku         String
   productName String
   variantName String?
   quantity    Int

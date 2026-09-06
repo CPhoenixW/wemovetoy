@@ -28,7 +28,7 @@ export class CartController {
   @Get()
   @ApiOperation({ summary: "Get my cart" })
   getCart(@Request() request: AuthenticatedRequest) {
-    return this.cartService.getCart(request.user.sub);
+    return this.cartService.getCart(request.user.sub, request.user.role);
   }
 
   @Post("items")
@@ -39,6 +39,7 @@ export class CartController {
   ) {
     return this.cartService.addItem(
       request.user.sub,
+      request.user.role,
       input.variantId,
       input.quantity,
     );
@@ -51,7 +52,12 @@ export class CartController {
     @Param("id", ParseIntPipe) id: number,
     @Body() input: UpdateCartItemDto,
   ) {
-    return this.cartService.updateItem(request.user.sub, id, input.quantity);
+    return this.cartService.updateItem(
+      request.user.sub,
+      request.user.role,
+      id,
+      input.quantity,
+    );
   }
 
   @Delete("items/:id")
