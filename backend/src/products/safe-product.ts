@@ -85,6 +85,7 @@ export interface PublicSafeProduct {
 // 在 toSafeProduct 基础上增加过滤 dealerPrice 的函数
 export function toPublicSafeProduct(product: Product): PublicSafeProduct {
   const safe = toSafeProduct(product);
-  const { dealerPrice: __, ...publicProduct } = safe;
+  const { dealerPrice, ...publicProduct } = safe;
+  void dealerPrice;
   return publicProduct;
 }
