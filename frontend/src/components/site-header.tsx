@@ -8,6 +8,7 @@ export function SiteHeader() {
       </Link>
       <nav aria-label="Primary navigation">
         <Link href="/products">Products</Link>
+        <Link href="/dealer/apply">Dealer</Link>
         <Link href="/login">Account</Link>
       </nav>
     </header>
