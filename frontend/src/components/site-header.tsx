@@ -44,6 +44,7 @@ export function SiteHeader() {
       </Link>
       <nav aria-label="Primary navigation">
         <Link href="/products">Products</Link>
+        <Link href="/dealer/apply">Dealer</Link>
         {user === undefined ? null : user ? (
           <>
             <span className="account-name">{user.name ?? user.email}</span>

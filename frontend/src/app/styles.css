@@ -223,3 +223,45 @@ button:disabled { cursor: wait; opacity: 0.7; }
   .product-detail__main { padding: 20px; }
   .product-detail__price { font-size: 26px; }
 }
+
+/* ---- 经销商申请 ---- */
+
+.dealer-form { max-width: 560px; }
+
+.notice {
+  background: #eef6f4;
+  border: 1px solid #b7d8d3;
+  border-radius: 8px;
+  color: #005f57;
+  margin-top: 32px;
+  padding: 14px 16px;
+}
+
+.form-success { color: #005f57; margin: 0; }
+
+.empty-state a { color: #005f57; }
+
+.application-list { margin-top: 48px; }
+.application-list h2 { font-size: 20px; margin: 0 0 16px; }
+.application-list__items { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
+.application-list__items li {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+.application-list__head { align-items: center; display: flex; gap: 12px; justify-content: space-between; }
+.application-list__company { font-weight: 600; }
+.application-list__note { color: #60706a; margin: 8px 0 0; }
+.application-list__date { color: #a9b5b0; font-size: 13px; margin: 8px 0 0; }
+
+.status-badge {
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.status-badge--pending { background: #fdf3e0; color: #9a6b00; }
+.status-badge--approved { background: #e3f3ec; color: #0f7a4d; }
+.status-badge--rejected { background: #fdeaea; color: #b42318; }
