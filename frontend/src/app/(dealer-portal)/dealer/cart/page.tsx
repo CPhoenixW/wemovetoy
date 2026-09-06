@@ -173,7 +173,11 @@ export default function DealerCartPage() {
                     type="button"
                     className="qty-btn"
                     aria-label="增加"
-                    disabled={busyItem === item.id}
+                    disabled={
+                      busyItem === item.id ||
+                      !item.isPurchasable ||
+                      item.quantity >= item.availableStock
+                    }
                     onClick={() => changeQuantity(item.id, item.quantity + 1)}
                   >
                     +
