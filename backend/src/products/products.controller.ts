@@ -22,6 +22,7 @@ import { UserRole } from "@prisma/client";
 import {
   PublicProductListItemDto,
   PublicProductDetailDto,
+  PublicProductVariantDto,
 } from "./dto/public-product.dto";
 
 type PublicProductSource = {
@@ -45,9 +46,10 @@ type PublicProductSource = {
     id: number;
     sku: string;
     name: string;
-    options: Record<string, string> | null;
-    price: number;
+    options: unknown;
+    price: { toNumber(): number };
     stock: number;
+    reserved: number;
   }>;
   createdAt: Date;
 };
@@ -78,7 +80,7 @@ export class ProductsController {
   @Get("products/:slug")
   async findBySlug(@Param("slug") slug: string) {
     const product = await this.productsService.findBySlug(slug);
-    return this.toPublicDetail(product as unknown as PublicProductSource);
+    return this.toPublicDetail(product);
   }
 
   // ============================================================
@@ -131,9 +133,31 @@ export class ProductsController {
       playEnvironment: product.playEnvironment,
       features,
       specifications,
+      variants: (product.variants ?? []).map((variant) =>
+        this.toPublicVariant(variant),
+      ),
       category: product.category ?? null,
-      variants: product.variants || [],
       createdAt: product.createdAt,
+    };
+  }
+
+  private toPublicVariant(
+    variant: NonNullable<PublicProductSource["variants"]>[number],
+  ): PublicProductVariantDto {
+    const options =
+      variant.options &&
+      typeof variant.options === "object" &&
+      !Array.isArray(variant.options)
+        ? (variant.options as Record<string, unknown>)
+        : null;
+
+    return {
+      id: variant.id,
+      sku: variant.sku,
+      name: variant.name,
+      options,
+      price: variant.price.toNumber(),
+      isPurchasable: variant.stock - variant.reserved > 0,
     };
   }
 

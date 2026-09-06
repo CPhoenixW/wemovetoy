@@ -38,6 +38,7 @@ export interface SafeProductWithRelations extends SafeProduct {
     | "price"
     | "dealerPrice"
     | "stock"
+    | "reserved"
     | "status"
   >[];
 }

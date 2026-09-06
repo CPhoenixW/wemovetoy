@@ -80,6 +80,15 @@ test("WEMOVE cross-module API smoke", async (t) => {
       expectApiResponse(detail, 200, true);
       assert.equal(detail.json.data.slug, product.slug);
       assert.ok(Array.isArray(detail.json.data.variants));
+      assert.ok(detail.json.data.variants.length >= 1);
+
+      const variant = detail.json.data.variants[0];
+      assert.deepEqual(
+        Object.keys(variant).sort(),
+        ["id", "isPurchasable", "name", "options", "price", "sku"],
+      );
+      assert.equal(typeof variant.price, "number");
+      assert.equal(typeof variant.isPurchasable, "boolean");
     },
   );
 
