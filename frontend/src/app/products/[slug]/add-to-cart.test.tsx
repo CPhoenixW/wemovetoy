@@ -13,8 +13,10 @@ vi.mock("next/link", () => ({
 
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
+// 稳定引用：避免每次 render 重建 router 使依赖 [router] 的 load 无限重载
+const mockRouter = { push: mockPush, replace: mockReplace };
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useRouter: () => mockRouter,
 }));
 
 const mockAddToCart = vi.fn();

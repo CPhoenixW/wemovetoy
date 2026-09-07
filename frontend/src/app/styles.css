@@ -1111,6 +1111,42 @@ button:disabled { cursor: wait; opacity: 0.7; }
 }
 .link-button:hover { text-decoration: underline; }
 
+/* ---- 普通用户：注册登录切换 + 我的订单 ---- */
+
+.auth-alt { color: #60706a; font-size: 14px; margin-top: 14px; }
+
+.order-detail { display: flex; flex-direction: column; gap: 18px; }
+.order-detail__head {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.order-detail__head .mono { font-size: 18px; }
+.order-detail__footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+}
+.order-detail__total { align-items: baseline; display: flex; gap: 10px; }
+.order-detail__total span { color: #60706a; }
+.order-detail__total strong { color: #005f57; font-size: 20px; }
+.order-meta {
+  background: #f4f7f6;
+  border: 1px solid #e3eae7;
+  border-radius: 10px;
+  display: grid;
+  gap: 6px 16px;
+  grid-template-columns: max-content 1fr;
+  margin: 0;
+  padding: 14px 16px;
+}
+.order-meta div { display: contents; }
+.order-meta dt { color: #60706a; font-size: 13px; }
+.order-meta dd { margin: 0; }
+
 /* ---- 移动端适配 ---- */
 
 @media (max-width: 640px) {

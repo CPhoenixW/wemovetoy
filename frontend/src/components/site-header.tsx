@@ -72,16 +72,19 @@ export function SiteHeader() {
         <Link href="/products">Products</Link>
         <Link href="/dealer/apply">Dealer</Link>
         {user?.role === "USER" ? (
-          <Link
-            href="/cart"
-            className="cart-link"
-            aria-label={`Cart, ${cartCount} items`}
-          >
-            Cart
-            {cartCount > 0 ? (
-              <span className="cart-count">{cartCount}</span>
-            ) : null}
-          </Link>
+          <>
+            <Link href="/orders">Orders</Link>
+            <Link
+              href="/cart"
+              className="cart-link"
+              aria-label={`Cart, ${cartCount} items`}
+            >
+              Cart
+              {cartCount > 0 ? (
+                <span className="cart-count">{cartCount}</span>
+              ) : null}
+            </Link>
+          </>
         ) : null}
         {user === undefined ? null : user ? (
           <>

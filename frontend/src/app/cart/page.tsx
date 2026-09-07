@@ -146,13 +146,18 @@ export default function CartPage() {
             Order number: <strong>{orderNumber}</strong>
           </p>
           <p>Thank you! Order tracking will be available in a future release.</p>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => setOrderNumber(null)}
-          >
-            OK
-          </button>
+          <div className="empty-action">
+            <Link href="/orders" className="btn-secondary">
+              View my orders
+            </Link>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => setOrderNumber(null)}
+            >
+              OK
+            </button>
+          </div>
         </div>
       ) : loading ? (
         <p className="page-loading">Loading…</p>
