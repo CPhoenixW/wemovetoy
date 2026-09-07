@@ -902,3 +902,167 @@ button:disabled { cursor: wait; opacity: 0.7; }
 }
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .page-info { font-size: 13px; color: #60706a; }
+
+/* ---- 商品列表（公开端） ---- */
+
+.search-form { display: flex; gap: 8px; margin-top: 24px; max-width: 480px; }
+.search-form input { flex: 1; }
+
+.sort-bar {
+  border-bottom: 1px solid #dce1df;
+  display: flex;
+  gap: 20px;
+  margin-top: 24px;
+  padding-bottom: 12px;
+}
+.sort-bar a { color: #60706a; font-size: 14px; text-decoration: none; }
+.sort-bar a:hover { color: #152028; }
+.sort-bar a.is-active { color: #005f57; font-weight: 700; }
+
+.product-card {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.product-card:hover {
+  border-color: #005f57;
+  box-shadow: 0 6px 16px rgba(21, 32, 40, 0.08);
+}
+.product-card__price { color: #005f57; font-size: 20px; font-weight: 700; }
+.product-card__name { font-size: 17px; margin: 0; }
+.product-card__desc { color: #60706a; font-size: 14px; margin: 0; }
+.product-card__age {
+  align-self: flex-start;
+  background: #eef2f0;
+  border-radius: 12px;
+  color: #60706a;
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.result-count { color: #60706a; margin-top: 24px; }
+
+.pagination a { color: #005f57; text-decoration: none; }
+.pagination span[aria-disabled="true"] { color: #a9b5b0; }
+.pagination__info { color: #60706a; }
+
+/* ---- 商品详情（公开端） ---- */
+
+.back-link a { color: #005f57; text-decoration: none; }
+.eyebrow a { color: inherit; text-decoration: none; }
+
+.product-detail {
+  display: grid;
+  gap: 32px;
+  grid-template-columns: 2fr 1fr;
+  margin-top: 32px;
+}
+.product-detail__main {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  padding: 28px;
+}
+.product-detail__price { color: #005f57; font-size: 32px; font-weight: 700; margin: 0; }
+.product-detail__short { color: #60706a; margin: 12px 0 0; }
+.product-detail__meta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+.product-detail__meta span {
+  background: #eef2f0;
+  border-radius: 12px;
+  color: #60706a;
+  font-size: 13px;
+  padding: 4px 12px;
+}
+.product-detail__description { line-height: 1.6; margin-top: 20px; }
+
+.product-detail__aside { display: grid; align-content: start; gap: 24px; }
+.product-detail__aside section {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 8px;
+  padding: 20px;
+}
+.product-detail__aside h2 { font-size: 15px; margin: 0 0 12px; }
+
+.feature-list { margin: 0; padding-left: 20px; }
+.feature-list li { margin: 6px 0; }
+
+.spec-list { display: grid; gap: 8px; margin: 0; }
+.spec-list div { display: flex; justify-content: space-between; }
+.spec-list dt { color: #60706a; }
+.spec-list dd { margin: 0; font-weight: 600; }
+
+.variant-list { display: grid; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.variant-list li {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+.variant-list__name { font-weight: 600; }
+.variant-list__price { color: #005f57; font-weight: 700; }
+.variant-list__availability { color: #60706a; font-size: 13px; }
+
+@media (max-width: 800px) {
+  .product-detail { grid-template-columns: 1fr; }
+}
+
+/* ---- 加载骨架屏 ---- */
+
+.skeleton {
+  background: linear-gradient(90deg, #e6ebe9 25%, #f3f5f3 50%, #e6ebe9 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton--price { height: 22px; width: 64px; }
+.skeleton--name { height: 18px; width: 70%; }
+.skeleton--desc { height: 14px; width: 100%; }
+.skeleton--title { height: 32px; width: 55%; }
+.skeleton--line { height: 20px; width: 34%; margin-top: 12px; }
+.skeleton--block { height: 240px; margin-top: 24px; }
+
+/* ---- 失败重试与头部账户 ---- */
+
+.retry-button { margin-top: 16px; }
+
+.account-name {
+  color: #60706a;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link-button {
+  background: none;
+  border: none;
+  color: #005f57;
+  cursor: pointer;
+  font: inherit;
+  min-height: 0;
+  padding: 0;
+}
+.link-button:hover { text-decoration: underline; }
+
+/* ---- 移动端适配 ---- */
+
+@media (max-width: 640px) {
+  .site-header { flex-wrap: wrap; gap: 8px; min-height: auto; padding: 12px 20px; }
+  .site-header nav { flex-wrap: wrap; gap: 14px; }
+  .search-form { max-width: none; }
+  .sort-bar { gap: 14px; overflow-x: auto; white-space: nowrap; }
+  .pagination { flex-wrap: wrap; }
+  .product-detail__main { padding: 20px; }
+  .product-detail__price { font-size: 26px; }
+}

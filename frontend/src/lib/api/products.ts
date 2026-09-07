@@ -4,7 +4,10 @@ import type {
   AdminProductDetail,
   DealerProduct,
   Paginated,
+  ProductDetail,
   ProductInput,
+  ProductListQuery,
+  ProductListResult,
   ProductQuery,
 } from "./types";
 
@@ -66,4 +69,24 @@ export function listDealerProducts(
   query: ProductQuery = {},
 ): Promise<Paginated<DealerProduct>> {
   return apiRequest(`dealer/products${buildQuery(query)}`);
+}
+
+// ===== 公开商品（GET /products，不暴露 dealerPrice/status/stock，不接受 status 查询） =====
+
+export async function listProducts(
+  query: ProductListQuery = {},
+): Promise<ProductListResult> {
+  const params = new URLSearchParams();
+  if (query.page != null) params.set("page", String(query.page));
+  if (query.limit != null) params.set("limit", String(query.limit));
+  if (query.sort) params.set("sort", query.sort);
+  if (query.categoryId != null) params.set("categoryId", String(query.categoryId));
+  if (query.search) params.set("search", query.search);
+
+  const qs = params.toString();
+  return apiRequest<ProductListResult>(`products${qs ? `?${qs}` : ""}`);
+}
+
+export async function getProductBySlug(slug: string): Promise<ProductDetail> {
+  return apiRequest<ProductDetail>(`products/${encodeURIComponent(slug)}`);
 }
