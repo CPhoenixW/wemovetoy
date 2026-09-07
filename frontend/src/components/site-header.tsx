@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getMe } from "@/lib/api/auth";
+import { getCart } from "@/lib/api/cart";
+import { CART_UPDATED_EVENT } from "@/lib/cart-events";
 import { clearAuth, getStoredToken } from "@/lib/auth-storage";
 import type { AuthenticatedUser } from "@/lib/api/types";
 
@@ -11,6 +13,7 @@ export function SiteHeader() {
   const [user, setUser] = useState<AuthenticatedUser | null | undefined>(
     undefined,
   );
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +35,29 @@ export function SiteHeader() {
     };
   }, []);
 
+  // 仅普通用户：拉取购物车件数，订阅变更事件保持徽标最新
+  useEffect(() => {
+    if (user?.role !== "USER") {
+      setCartCount(0);
+      return;
+    }
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const cart = await getCart();
+        if (!cancelled) setCartCount(cart.itemCount);
+      } catch {
+        if (!cancelled) setCartCount(0);
+      }
+    };
+    refresh();
+    window.addEventListener(CART_UPDATED_EVENT, refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(CART_UPDATED_EVENT, refresh);
+    };
+  }, [user]);
+
   function signOut() {
     clearAuth();
     window.location.assign("/products");
@@ -45,6 +71,21 @@ export function SiteHeader() {
       <nav aria-label="Primary navigation">
         <Link href="/products">Products</Link>
         <Link href="/dealer/apply">Dealer</Link>
+        {user?.role === "USER" ? (
+          <>
+            <Link href="/orders">Orders</Link>
+            <Link
+              href="/cart"
+              className="cart-link"
+              aria-label={`Cart, ${cartCount} items`}
+            >
+              Cart
+              {cartCount > 0 ? (
+                <span className="cart-count">{cartCount}</span>
+              ) : null}
+            </Link>
+          </>
+        ) : null}
         {user === undefined ? null : user ? (
           <>
             <span className="account-name">{user.name ?? user.email}</span>

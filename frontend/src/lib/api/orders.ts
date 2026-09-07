@@ -18,6 +18,27 @@ export function createOrder(input: CreateOrderInput = {}): Promise<Order> {
   });
 }
 
+/** 我的订单列表（本人可见，createdAt 倒序，分页） */
+export function listMyOrders(
+  query: { page?: number; pageSize?: number } = {},
+): Promise<Paginated<Order>> {
+  const params = new URLSearchParams();
+  if (query.page) params.set("page", String(query.page));
+  if (query.pageSize) params.set("pageSize", String(query.pageSize));
+  const qs = params.toString();
+  return apiRequest<Paginated<Order>>(`orders${qs ? `?${qs}` : ""}`);
+}
+
+/** 我的订单详情（含商品快照；本人或 ADMIN 可见） */
+export function getMyOrder(id: number): Promise<Order> {
+  return apiRequest<Order>(`orders/${id}`);
+}
+
+/** 取消我待处理的订单（仅 status=PENDING 可取消） */
+export function cancelMyOrder(id: number): Promise<Order> {
+  return apiRequest<Order>(`orders/${id}/cancel`, { method: "PATCH" });
+}
+
 // ===== Admin 订单（GET/PATCH /admin/orders，ADMIN） =====
 
 /** 后台订单列表（分页 + status + search 订单号） */

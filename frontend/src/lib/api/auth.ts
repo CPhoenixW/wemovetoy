@@ -1,5 +1,30 @@
 import { apiRequest } from "./client";
-import type { AuthenticatedUser } from "./types";
+import type { AuthenticatedUser, LoginResult } from "./types";
+
+export interface CredentialsInput {
+  email: string;
+  password: string;
+}
+
+export interface RegisterInput extends CredentialsInput {
+  name?: string;
+}
+
+/** 登录：成功返回 accessToken + 用户信息（前端随后 storeAuth 落盘） */
+export function login(input: CredentialsInput): Promise<LoginResult> {
+  return apiRequest<LoginResult>("auth/login", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+/** 注册普通用户：后端仅返回用户信息（不含 token），需要自动登录时再调 login */
+export function register(input: RegisterInput): Promise<AuthenticatedUser> {
+  return apiRequest<AuthenticatedUser>("auth/register", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
 
 const TOKEN_KEY = "wemove.accessToken";
 const USER_KEY = "wemove.user";
