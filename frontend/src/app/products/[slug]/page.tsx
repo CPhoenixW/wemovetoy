@@ -49,6 +49,9 @@ export default async function ProductDetailPage({
 
   return (
     <section className="page-shell">
+      <p className="back-link back-link--top">
+        <Link href="/products">← Back to products</Link>
+      </p>
       <p className="eyebrow">
         {product.category ? (
           <Link href="/products">{product.category.name}</Link>
@@ -112,10 +115,6 @@ export default async function ProductDetailPage({
           </section>
         </aside>
       </div>
-
-      <p className="back-link">
-        <Link href="/products">← Back to products</Link>
-      </p>
     </section>
   );
 }

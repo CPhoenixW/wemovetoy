@@ -957,6 +957,8 @@ button:disabled { cursor: wait; opacity: 0.7; }
 
 .back-link a { color: #005f57; text-decoration: none; }
 .eyebrow a { color: inherit; text-decoration: none; }
+/* 详情页顶部的返回（替代原页面底部 back-link） */
+.back-link--top { margin: 0 0 24px; font-size: 14px; }
 
 .product-detail {
   display: grid;
@@ -1054,6 +1056,39 @@ button:disabled { cursor: wait; opacity: 0.7; }
 .variant-pick__availability { color: #60706a; font-size: 12px; }
 .add-to-cart-panel__row { align-items: center; display: flex; flex-wrap: wrap; gap: 16px; }
 .add-cart-btn { min-width: 160px; }
+
+/* 加购成功提示：醒目卡片 + 购物车图标 */
+.add-success {
+  align-items: stretch;
+  background: #e8f6ef;
+  border: 1px solid #bfe6d4;
+  border-radius: 10px;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+.add-success__title {
+  color: #0a7a4f;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+.add-success__detail {
+  color: #4a5a54;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 4px;
+}
+.add-success__cta {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 6px;
+  text-decoration: none;
+  width: 100%;
+}
+.add-success__cta:hover { text-decoration: none; }
 
 /* 公共头部购物车入口徽标 */
 .cart-link { align-items: center; display: inline-flex; }

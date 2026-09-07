@@ -146,12 +146,15 @@ export function AddToCartPanel({ productName, variants }: AddToCartPanelProps) {
           {error}
         </p>
       ) : added && selected ? (
-        <p className="form-success">
-          {productName} · {selected.name} added to cart.{" "}
-          <Link href="/cart" className="link-secondary">
-            View cart &amp; checkout →
+        <div className="add-success" role="status">
+          <p className="add-success__title">🛒 Added to cart</p>
+          <p className="add-success__detail">
+            {productName} · {selected.name} added to cart.
+          </p>
+          <Link href="/cart" className="btn-primary add-success__cta">
+            🛒 View cart &amp; checkout
           </Link>
-        </p>
+        </div>
       ) : null}
     </div>
   );
