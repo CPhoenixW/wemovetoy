@@ -268,6 +268,18 @@ test("WEMOVE cross-module API smoke", async (t) => {
       );
       expectApiResponse(publicDraft, 404, false);
 
+      const publicProductsAfterDraft = await request(
+        "/products?page=1&limit=100",
+      );
+      expectApiResponse(publicProductsAfterDraft, 200, true);
+      assert.equal(
+        publicProductsAfterDraft.json.data.items.some(
+          (item) => item.slug === draftSlug,
+        ),
+        false,
+        "draft product must not appear in the public product list",
+      );
+
       const anonymousDealerCatalog = await request("/dealer/products");
       expectApiResponse(anonymousDealerCatalog, 401, false);
 
@@ -331,6 +343,7 @@ test("WEMOVE cross-module API smoke", async (t) => {
     "real SKU checkout revalidates stock and preserves order snapshots",
     async () => {
       const checkoutSku = `e2e-checkout-${runId}`;
+      const productNameAtCheckout = product.name;
       const initialVariantName = "E2E Checkout Variant";
       const initialPrice = 12.34;
       const checkoutPrice = 13.25;
@@ -376,7 +389,7 @@ test("WEMOVE cross-module API smoke", async (t) => {
       expectApiResponse(firstAdd, 201, true);
       assert.equal(firstAdd.json.data.variantId, variantId);
       assert.equal(firstAdd.json.data.sku, checkoutSku);
-      assert.equal(firstAdd.json.data.productName, product.name);
+      assert.equal(firstAdd.json.data.productName, productNameAtCheckout);
       assert.equal(firstAdd.json.data.variantName, initialVariantName);
       assert.equal(firstAdd.json.data.quantity, 2);
       expectMoney(firstAdd.json.data.unitPrice, initialPrice, "retail price");
@@ -479,7 +492,7 @@ test("WEMOVE cross-module API smoke", async (t) => {
       const orderItem = order.json.data.items[0];
       assert.equal(orderItem.variantId, variantId);
       assert.equal(orderItem.sku, checkoutSku);
-      assert.equal(orderItem.productName, product.name);
+      assert.equal(orderItem.productName, productNameAtCheckout);
       assert.equal(orderItem.variantName, snapshotVariantName);
       assert.equal(orderItem.quantity, checkoutQuantity);
       expectMoney(orderItem.unitPrice, checkoutPrice, "order unit price");
@@ -569,10 +582,24 @@ test("WEMOVE cross-module API smoke", async (t) => {
       );
       expectApiResponse(mutateCatalogAfterCheckout, 200, true);
 
+      const mutateProductAfterCheckout = await request(
+        `/admin/products/${product.id}`,
+        {
+          method: "PATCH",
+          token: adminToken,
+          body: { name: `E2E Product Changed Later ${runId}` },
+        },
+      );
+      expectApiResponse(mutateProductAfterCheckout, 200, true);
+
       const persistedOrder = await request(`/orders/${order.json.data.id}`, {
         token: userToken,
       });
       expectApiResponse(persistedOrder, 200, true);
+      assert.equal(
+        persistedOrder.json.data.items[0].productName,
+        productNameAtCheckout,
+      );
       assert.equal(
         persistedOrder.json.data.items[0].variantName,
         snapshotVariantName,
@@ -587,6 +614,16 @@ test("WEMOVE cross-module API smoke", async (t) => {
         53,
         "immutable order total",
       );
+
+      const restoreProductName = await request(
+        `/admin/products/${product.id}`,
+        {
+          method: "PATCH",
+          token: adminToken,
+          body: { name: productNameAtCheckout },
+        },
+      );
+      expectApiResponse(restoreProductName, 200, true);
 
       const invalidInitialTransition = await request(
         `/admin/orders/${order.json.data.id}/status`,
