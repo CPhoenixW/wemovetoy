@@ -5,6 +5,17 @@ import { ApiError, apiRequest } from "@/lib/api/client";
 import type { LoginResult } from "@/lib/api/types";
 import { storeAuth } from "@/lib/auth-storage";
 
+/** 登录成功回跳目标校验：仅允许站内相对路径（/cart、/products/foo?x=1），
+ *  拒绝 //host、https://host、含反斜杠等开放重定向向量。 */
+export function safeNextPath(next: string | null | undefined): string | null {
+  if (!next) return null;
+  if (!next.startsWith("/")) return null;
+  if (next.startsWith("//")) return null;
+  if (/\\/.test(next)) return null;
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(next)) return null;
+  return next;
+}
+
 export default function LoginPage() {
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
@@ -29,7 +40,9 @@ export default function LoginPage() {
         DEALER: "/dealer",
         USER: "/products",
       };
-      window.location.assign(homeByRole[result.user.role] ?? "/products");
+      const rawNext = new URLSearchParams(window.location.search).get("next");
+      const next = safeNextPath(rawNext);
+      window.location.assign(next ?? homeByRole[result.user.role] ?? "/products");
     } catch (caughtError) {
       setError(
         caughtError instanceof ApiError ? caughtError.message : "Unable to sign in",

@@ -1014,6 +1014,62 @@ button:disabled { cursor: wait; opacity: 0.7; }
   .product-detail { grid-template-columns: 1fr; }
 }
 
+/* ---- 普通用户：详情页选 SKU 加购 + 公共头部购物车入口 ---- */
+.add-to-cart-panel { display: grid; gap: 14px; }
+.add-to-cart-fieldset { border: 0; margin: 0; min-width: 0; padding: 0; }
+.add-to-cart-panel__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #60706a;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.variant-pick { display: grid; gap: 8px; }
+.variant-pick__option {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 6px;
+  color: #152028;
+  display: flex;
+  font-size: 13px;
+  gap: 10px;
+  justify-content: space-between;
+  min-height: 0;
+  padding: 10px 12px;
+  text-align: left;
+  width: 100%;
+}
+.variant-pick__option:disabled { color: #a9b5b0; cursor: not-allowed; opacity: 0.7; }
+.variant-pick__option:not(:disabled):hover { border-color: #005f57; }
+.variant-pick__option.is-selected {
+  background: #eef4f2;
+  border-color: #005f57;
+  box-shadow: 0 0 0 3px rgba(0, 95, 87, 0.08);
+}
+.variant-pick__name { font-weight: 600; }
+.variant-pick__sku { color: #a9b5b0; font-size: 12px; font-weight: 400; }
+.variant-pick__meta { align-items: center; display: inline-flex; gap: 10px; }
+.variant-pick__price { color: #005f57; font-weight: 700; }
+.variant-pick__availability { color: #60706a; font-size: 12px; }
+.add-to-cart-panel__row { align-items: center; display: flex; flex-wrap: wrap; gap: 16px; }
+.add-cart-btn { min-width: 160px; }
+
+/* 公共头部购物车入口徽标 */
+.cart-link { align-items: center; display: inline-flex; }
+.cart-count {
+  background: #005f57;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1;
+  margin-left: 5px;
+  min-width: 16px;
+  padding: 3px 5px;
+  text-align: center;
+}
+
 /* ---- 加载骨架屏 ---- */
 
 .skeleton {

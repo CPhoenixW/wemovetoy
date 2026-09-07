@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api/client";
 import { getProductBySlug } from "@/lib/api/products";
 import type { ProductDetail } from "@/lib/api/types";
 import { formatAgeRange, formatPrice } from "@/lib/format";
+import { AddToCartPanel } from "./add-to-cart";
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -101,19 +102,10 @@ export default async function ProductDetailPage({
           <section>
             <h2>Variants</h2>
             {product.variants.length > 0 ? (
-              <ul className="variant-list">
-                {product.variants.map((variant) => (
-                  <li key={variant.id}>
-                    <span className="variant-list__name">{variant.name}</span>
-                    <span className="variant-list__price">
-                      {formatPrice(variant.price)}
-                    </span>
-                    <span className="variant-list__availability">
-                      {variant.isPurchasable ? "In stock" : "Out of stock"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <AddToCartPanel
+                productName={product.name}
+                variants={product.variants}
+              />
             ) : (
               <p className="empty-state">No variants available.</p>
             )}
