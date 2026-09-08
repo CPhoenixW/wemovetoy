@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth, useLogout } from "@/lib/hooks/use-auth";
+import { AccessDenied, AuthChecking } from "@/components/ui/access-state";
 
 const dealerNav = [
   { href: "/dealer", label: "Portal 首页" },
@@ -15,8 +16,11 @@ export default function DealerLayout({
   const user = useAuth("DEALER");
   const logout = useLogout();
 
-  if (!user || user.role !== "DEALER") {
-    return null;
+  if (!user) {
+    return <AuthChecking />;
+  }
+  if (user.role !== "DEALER") {
+    return <AccessDenied roleLabel="经销商（DEALER）" />;
   }
 
   return (

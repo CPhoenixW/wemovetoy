@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth, useLogout } from "@/lib/hooks/use-auth";
+import { AccessDenied, AuthChecking } from "@/components/ui/access-state";
 
 const adminNav = [
   { href: "/admin", label: "Dashboard" },
@@ -16,8 +17,11 @@ export default function AdminLayout({
   const user = useAuth("ADMIN");
   const logout = useLogout();
 
-  if (!user || user.role !== "ADMIN") {
-    return null;
+  if (!user) {
+    return <AuthChecking />;
+  }
+  if (user.role !== "ADMIN") {
+    return <AccessDenied roleLabel="管理员（ADMIN）" />;
   }
 
   return (
