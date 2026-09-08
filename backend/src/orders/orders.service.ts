@@ -477,17 +477,21 @@ export class OrdersService {
       // 加锁顺序与 createOrder/cancelOrder 一致,避免交叉死锁。
       if (order.status === OrderStatus.PENDING && status === OrderStatus.PAID) {
         for (const item of sortedItems) {
+          // 预留转真实扣减:stock -= qty + reserved -= qty。
+          // 余额保护只要求 reserved >= qty(这是预留模式的不变量:下单时已预留)。
+          // stock 不作为硬性条件,因为 admin 可能在 PENDING 期间合法修改 stock,
+          // 真实扣减后 stock 变负属于另一层约束(应在 admin 改 stock 时拦截),
+          // 不应阻塞 PENDING→PAID 转换。
           const affected: number = await tx.$executeRaw`
             UPDATE "variants"
             SET "stock" = "stock" - ${item.quantity},
                 "reserved" = "reserved" - ${item.quantity}
             WHERE "id" = ${item.variantId}
               AND "reserved" >= ${item.quantity}
-              AND "stock" >= ${item.quantity}
           `;
           if (affected !== 1) {
             throw new Error(
-              `Stock/reserved balance underflow for variant ${item.sku}`,
+              `Reserved balance underflow for variant ${item.sku}`,
             );
           }
         }
