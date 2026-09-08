@@ -297,3 +297,13 @@ export interface AdminOrderQuery {
   status?: OrderStatus;
   search?: string;
 }
+
+/** Admin 订单详情（GET /admin/orders/:id：订单快照 + 客户信息） */
+export interface AdminOrderDetail extends Order {
+  customer: {
+    id: number;
+    email: string;
+    name: string | null;
+    role: string;
+  };
+}
