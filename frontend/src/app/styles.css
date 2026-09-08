@@ -1437,6 +1437,32 @@ button:disabled { cursor: wait; opacity: 0.7; }
 
 .section-title { font-size: 18px; margin: 8px 0 14px; }
 
+/* Dealer 企业信息与成员管理 */
+.company-detail { display: flex; flex-direction: column; gap: 18px; }
+.company-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.company-head .company-name { font-size: 22px; margin: 0; }
+.invite-panel {
+  margin-top: 8px;
+  padding: 20px;
+  border: 1px solid #dde4e0;
+  border-radius: 12px;
+  background: #fff;
+}
+.invite-panel .section-title { margin-top: 0; }
+.invite-form {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 8px;
+  flex-wrap: wrap;
+}
+.invite-form .form-input { flex: 1; min-width: 220px; }
+.invite-hint { margin-top: 16px; }
+
 .quick-link-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

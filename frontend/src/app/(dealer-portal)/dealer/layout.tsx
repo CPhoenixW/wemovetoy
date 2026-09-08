@@ -10,6 +10,7 @@ const dealerNav = [
   { href: "/dealer", label: "Portal 首页" },
   { href: "/dealer/products", label: "商品目录" },
   { href: "/dealer/cart", label: "购物车" },
+  { href: "/dealer/company", label: "我的企业" },
 ];
 
 export default function DealerLayout({
