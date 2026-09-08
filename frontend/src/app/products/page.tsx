@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import Link from "next/link";
+import { CatalogToolbar } from "@/components/catalog-toolbar";
 import { ProductCard } from "@/components/product-card";
 import { ShowcaseHero } from "@/components/showcase-hero";
 import { listProducts } from "@/lib/api/products";
@@ -25,11 +26,11 @@ function resolveShowcaseImages(): string[] {
 }
 
 const SORTS: { value: ProductSort; label: string }[] = [
-  { value: "newest", label: "Newest" },
-  { value: "price_asc", label: "Price ↑" },
-  { value: "price_desc", label: "Price ↓" },
-  { value: "name_asc", label: "Name A–Z" },
-  { value: "name_desc", label: "Name Z–A" },
+  { value: "newest", label: "最新上架" },
+  { value: "price_asc", label: "价格从低到高" },
+  { value: "price_desc", label: "价格从高到低" },
+  { value: "name_asc", label: "名称升序" },
+  { value: "name_desc", label: "名称降序" },
 ];
 
 interface ProductsPageProps {
@@ -70,6 +71,7 @@ export default async function ProductsPage({
   };
 
   const showcaseImages = resolveShowcaseImages();
+  const hasShowcaseMedia = showcaseImages.length > 0;
 
   const result: ProductListResult = await listProducts({
     page,
@@ -81,62 +83,48 @@ export default async function ProductsPage({
   return (
     <>
       <section className="catalog-hero">
-        <ShowcaseHero images={showcaseImages} />
-        <div className="catalog-hero__content">
-          <p className="eyebrow">Catalog</p>
-          <h1>Products</h1>
-
-          <div className="search-row">
-            <form className="search-form" action="/products" method="get">
-              <input
-                aria-label="Search products"
-                defaultValue={search}
-                name="search"
-                placeholder="Search products"
-                type="search"
-              />
-              {sort ? (
-                <input name="sort" type="hidden" value={sort} />
-              ) : null}
-              <button type="submit">Search</button>
-            </form>
-            <p className="search-row__brand">惟®木|WeMove®</p>
+        <div
+          className={
+            hasShowcaseMedia
+              ? "catalog-hero__grid"
+              : "catalog-hero__grid catalog-hero__grid--text-only"
+          }
+        >
+          <div className="catalog-hero__text">
+            <p className="catalog-hero__brand">惟®木|WeMove® · WEMOVE</p>
+            <h1>全部商品</h1>
+            <p className="catalog-hero__lead">
+              高精度木质轨道积木，在动手拼搭中激发想象力与 STEAM 创造力。
+            </p>
           </div>
-
-          <nav aria-label="Sort products" className="sort-bar">
-            {SORTS.map(({ value, label }) => (
-              <Link
-                aria-current={sort === value ? "page" : undefined}
-                className={sort === value ? "is-active" : undefined}
-                href={hrefFor({ sort: value, page: "1" })}
-                key={value}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
+          {hasShowcaseMedia ? (
+            <div className="catalog-hero__media">
+              <ShowcaseHero images={showcaseImages} />
+            </div>
+          ) : null}
         </div>
       </section>
 
-      {result.items.length > 0 ? (
-        <section className="catalog-list">
-          <div aria-label="Product catalogue" className="product-grid">
-            {result.items.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-          <Pagination
-            hrefFor={hrefFor}
-            page={result.page}
-            total={result.total}
-            totalPages={result.totalPages}
-          />
-        </section>
-      ) : (
-        <section className="catalog-list">
-          <p className="empty-state">No products found.</p>
-        </section>
-      )}
+      <section className="catalog-list">
+        <CatalogToolbar search={search ?? ""} sort={sort} sorts={SORTS} />
+        {result.items.length > 0 ? (
+          <>
+            <div aria-label="商品列表" className="product-grid">
+              {result.items.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+            <Pagination
+              hrefFor={hrefFor}
+              page={result.page}
+              total={result.total}
+              totalPages={result.totalPages}
+            />
+          </>
+        ) : (
+          <p className="empty-state">暂无相关商品。</p>
+        )}
+      </section>
     </>
   );
 }
@@ -153,23 +141,29 @@ function Pagination({
   totalPages: number;
 }) {
   if (totalPages <= 1) {
-    return <p className="result-count">{total} products</p>;
+    return (
+      <p className="result-count">
+        共 <span className="tnum">{total}</span> 件商品
+      </p>
+    );
   }
 
   return (
-    <nav aria-label="Pagination" className="pagination">
+    <nav aria-label="分页" className="pagination">
       {page > 1 ? (
-        <Link href={hrefFor({ page: String(page - 1) })}>Prev</Link>
+        <Link href={hrefFor({ page: String(page - 1) })}>上一页</Link>
       ) : (
-        <span aria-disabled="true">Prev</span>
+        <span aria-disabled="true">上一页</span>
       )}
       <span className="pagination__info">
-        Page {page} of {totalPages} · {total} products
+        第 <span className="tnum">{page}</span> /{" "}
+        <span className="tnum">{totalPages}</span> 页 · 共{" "}
+        <span className="tnum">{total}</span> 件商品
       </span>
       {page < totalPages ? (
-        <Link href={hrefFor({ page: String(page + 1) })}>Next</Link>
+        <Link href={hrefFor({ page: String(page + 1) })}>下一页</Link>
       ) : (
-        <span aria-disabled="true">Next</span>
+        <span aria-disabled="true">下一页</span>
       )}
     </nav>
   );

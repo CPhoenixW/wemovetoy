@@ -89,6 +89,9 @@ describe("普通用户购物车页", () => {
     expect(screen.getByText("Snake Set")).toBeInTheDocument();
     expect(screen.getByText("Basic（robot-basic）")).toBeInTheDocument();
     expect(screen.getAllByText("¥150.00").length).toBeGreaterThan(0);
+    // 服务端校验提示应紧邻结算按钮，而非页头弱提示
+    expect(screen.getByText(/服务器实际数据再次确认/)).toBeInTheDocument();
+    expect(screen.queryByText(/以服务器最终校验为准/)).toBeNull();
   });
 
   it("空购物车显示空态并可去选购", async () => {
@@ -97,10 +100,10 @@ describe("普通用户购物车页", () => {
     render(<CartPage />);
 
     await waitFor(() =>
-      expect(screen.getByText("Your cart is empty")).toBeInTheDocument(),
+      expect(screen.getByText("购物车是空的")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Browse products")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Checkout" })).toBeNull();
+    expect(screen.getByText("去逛逛")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "去结算" })).toBeNull();
   });
 
   it("数量等于可用库存时加号禁用", async () => {
@@ -128,7 +131,7 @@ describe("普通用户购物车页", () => {
       expect(screen.getByText("Robot Arm")).toBeInTheDocument(),
     );
 
-    expect(screen.getByRole("button", { name: "Increase" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "增加数量" })).toBeDisabled();
   });
 
   it("数量超过可用库存时结算禁用并提示", async () => {
@@ -156,9 +159,9 @@ describe("普通用户购物车页", () => {
       expect(screen.getByText("Robot Arm")).toBeInTheDocument(),
     );
 
-    expect(screen.getByRole("button", { name: "Checkout" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "去结算" })).toBeDisabled();
     expect(
-      screen.getByText(/exceed available stock/i),
+      screen.getByText("部分商品超出可用库存，请调整数量。"),
     ).toBeInTheDocument();
   });
 
@@ -187,9 +190,9 @@ describe("普通用户购物车页", () => {
       expect(screen.getByText("Robot Arm")).toBeInTheDocument(),
     );
 
-    expect(screen.getByRole("button", { name: "Checkout" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "去结算" })).toBeDisabled();
     expect(
-      screen.getByText(/no longer purchasable/i),
+      screen.getByText("部分商品已不可购买，请在结算前处理。"),
     ).toBeInTheDocument();
   });
 
@@ -206,13 +209,13 @@ describe("普通用户购物车页", () => {
       expect(screen.getByText("Robot Arm")).toBeInTheDocument(),
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "移除" })[0]);
 
     await waitFor(() =>
       expect(mockRemoveCartItem).toHaveBeenCalledWith(10),
     );
     await waitFor(() =>
-      expect(screen.getByText("Your cart is empty")).toBeInTheDocument(),
+      expect(screen.getByText("购物车是空的")).toBeInTheDocument(),
     );
   });
 
@@ -228,7 +231,7 @@ describe("普通用户购物车页", () => {
     const rows = screen.getAllByText("Robot Arm").length;
     expect(rows).toBeGreaterThan(0);
     // 第一行的加号
-    const increase = screen.getAllByRole("button", { name: "Increase" })[0];
+    const increase = screen.getAllByRole("button", { name: "增加数量" })[0];
     fireEvent.click(increase);
     await waitFor(() =>
       expect(mockUpdateCartItem).toHaveBeenCalledWith(10, 2),
@@ -256,14 +259,14 @@ describe("普通用户购物车页", () => {
       expect(screen.getByText("Robot Arm")).toBeInTheDocument(),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Checkout" }));
-    const confirmBtn = await screen.findByRole("button", { name: "Place order" });
+    fireEvent.click(screen.getByRole("button", { name: "去结算" }));
+    const confirmBtn = await screen.findByRole("button", { name: "提交订单" });
     expect(confirmBtn).not.toBeDisabled();
 
     fireEvent.click(confirmBtn);
 
     await waitFor(() =>
-      expect(screen.getByText(/Order number:/i)).toBeInTheDocument(),
+      expect(screen.getByText(/订单号/)).toBeInTheDocument(),
     );
     expect(screen.getByText("WM202609010001")).toBeInTheDocument();
   });
@@ -290,8 +293,8 @@ describe("普通用户购物车页", () => {
       expect(screen.getByText("Robot Arm")).toBeInTheDocument(),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Checkout" }));
-    const confirmBtn = await screen.findByRole("button", { name: "Place order" });
+    fireEvent.click(screen.getByRole("button", { name: "去结算" }));
+    const confirmBtn = await screen.findByRole("button", { name: "提交订单" });
     fireEvent.click(confirmBtn);
 
     await waitFor(() =>
@@ -299,6 +302,6 @@ describe("普通用户购物车页", () => {
         screen.getByText("Insufficient stock for variant robot-basic"),
       ).toBeInTheDocument(),
     );
-    expect(screen.queryByRole("button", { name: "Place order" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "提交订单" })).toBeNull();
   });
 });

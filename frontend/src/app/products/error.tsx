@@ -9,11 +9,11 @@ export default function ProductsError({
 }) {
   return (
     <section className="page-shell">
-      <p className="eyebrow">Something went wrong</p>
-      <h1>Unable to load products</h1>
-      <p className="form-error">{error.message || "Please try again later."}</p>
+      <p className="eyebrow">加载出错了</p>
+      <h1>商品加载失败</h1>
+      <p className="form-error">{error.message || "请稍后重试。"}</p>
       <button className="retry-button" type="button" onClick={reset}>
-        Try again
+        重试
       </button>
     </section>
   );

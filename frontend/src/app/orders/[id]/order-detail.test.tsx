@@ -69,13 +69,17 @@ describe("订单详情页", () => {
     await waitFor(() =>
       expect(screen.getByText("WM202609000042")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Pending")).toBeInTheDocument();
+    expect(screen.getByText("待处理")).toBeInTheDocument();
     expect(screen.getByText("Robot Arm")).toBeInTheDocument();
     expect(screen.getByText("Basic · robot-basic")).toBeInTheDocument();
     expect(screen.getByText("Lin")).toBeInTheDocument();
     // 小计 300 与订单合计 300 会同时出现
     expect(screen.getAllByText("¥300.00").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Cancel order" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "取消订单" })).toBeEnabled();
+    // 概要卡突出 状态 / 下一步 / 总金额；配送备注收进次级区
+    expect(screen.getByText("总金额")).toBeInTheDocument();
+    expect(screen.getByText("商家将尽快确认并处理您的订单。")).toBeInTheDocument();
+    expect(screen.getByText("配送与备注")).toBeInTheDocument();
   });
 
   it("取消需确认，成功后调用 cancelMyOrder(42) 且状态变 CANCELLED", async () => {
@@ -89,21 +93,21 @@ describe("订单详情页", () => {
 
     render(<OrderDetailPage />);
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Cancel order" })).toBeInTheDocument(),
+      expect(screen.getByRole("button", { name: "取消订单" })).toBeInTheDocument(),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Cancel order" }));
-    fireEvent.click(screen.getByRole("button", { name: "Yes, cancel" }));
+    fireEvent.click(screen.getByRole("button", { name: "取消订单" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认取消" }));
 
     await waitFor(() =>
       expect(mockCancelMyOrder).toHaveBeenCalledWith(42),
     );
     await waitFor(() =>
-      expect(screen.getByText("Cancelled")).toBeInTheDocument(),
+      expect(screen.getByText("已取消")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Order cancelled.")).toBeInTheDocument();
+    expect(screen.getByText("订单已取消。")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Cancel order" }),
+      screen.queryByRole("button", { name: "取消订单" }),
     ).toBeNull();
   });
 
@@ -115,9 +119,9 @@ describe("订单详情页", () => {
     await waitFor(() =>
       expect(screen.getByText("WM202609000042")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Paid")).toBeInTheDocument();
+    expect(screen.getByText("已支付")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Cancel order" }),
+      screen.queryByRole("button", { name: "取消订单" }),
     ).toBeNull();
   });
 
@@ -127,9 +131,9 @@ describe("订单详情页", () => {
     render(<OrderDetailPage />);
 
     await waitFor(() =>
-      expect(screen.getByText("Order not found")).toBeInTheDocument(),
+      expect(screen.getByText("未找到该订单")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Back to my orders")).toBeInTheDocument();
+    expect(screen.getByText("返回我的订单")).toBeInTheDocument();
   });
 
   it("读取 401 跳登录带回跳参数", async () => {

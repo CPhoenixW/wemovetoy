@@ -71,8 +71,8 @@ describe("我的订单列表页", () => {
     );
     expect(screen.getByText("WM2026090002")).toBeInTheDocument();
     expect(screen.getAllByText("¥200.00").length).toBeGreaterThan(0);
-    expect(screen.getByText("Pending")).toBeInTheDocument();
-    expect(screen.getByText("Paid")).toBeInTheDocument();
+    expect(screen.getByText("待处理")).toBeInTheDocument();
+    expect(screen.getByText("已支付")).toBeInTheDocument();
   });
 
   it("空列表显示空态并可去选购", async () => {
@@ -81,9 +81,9 @@ describe("我的订单列表页", () => {
     render(<MyOrdersPage />);
 
     await waitFor(() =>
-      expect(screen.getByText("No orders yet")).toBeInTheDocument(),
+      expect(screen.getByText("暂无订单")).toBeInTheDocument(),
     );
-    expect(screen.getByText("Browse products")).toBeInTheDocument();
+    expect(screen.getByText("去逛逛")).toBeInTheDocument();
   });
 
   it("读取 401 时跳登录带回跳参数", async () => {
@@ -109,9 +109,9 @@ describe("我的订单列表页", () => {
     render(<MyOrdersPage />);
 
     await waitFor(() =>
-      expect(screen.getByText("Couldn’t load your orders")).toBeInTheDocument(),
+      expect(screen.getByText("无法加载你的订单")).toBeInTheDocument(),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
 
     await waitFor(() =>
       expect(screen.getByText("WM2026090001")).toBeInTheDocument(),
@@ -133,18 +133,18 @@ describe("我的订单列表页", () => {
     await waitFor(() =>
       expect(screen.getByText("WM2026090001")).toBeInTheDocument(),
     );
-    const prev = screen.getByRole("button", { name: "Previous" });
-    const next = screen.getByRole("button", { name: "Next" });
+    const prev = screen.getByRole("button", { name: "上一页" });
+    const next = screen.getByRole("button", { name: "下一页" });
     expect(prev).toBeDisabled();
     expect(next).toBeEnabled();
-    expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
+    expect(screen.getByText(/第 1 \/ 2 页 · 共 1 笔订单/)).toBeInTheDocument();
 
     fireEvent.click(next);
 
     await waitFor(() =>
       expect(screen.getByText("WM2026090002")).toBeInTheDocument(),
     );
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
-    expect(screen.getByText(/Page 2 of 2/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "下一页" })).toBeDisabled();
+    expect(screen.getByText(/第 2 \/ 2 页 · 共 1 笔订单/)).toBeInTheDocument();
   });
 });

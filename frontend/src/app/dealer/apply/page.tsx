@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { clearToken, getMe, getToken, setCurrentUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { createDealerApplication, listMyApplications } from "@/lib/api/dealers";
@@ -10,13 +10,20 @@ import type {
   DealerApplication,
 } from "@/lib/api/types";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { dealerStatusMap } from "@/lib/format";
 
 type AuthState = "checking" | "anonymous" | "authed";
 
+/** 提交反馈：成功/失败二选一，结构上保证不会同时出现。 */
+interface SubmitFeedback {
+  kind: "success" | "error";
+  message: string;
+}
+
 const STATUS_LABEL: Record<DealerApplication["status"], string> = {
-  PENDING: "Pending",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
+  PENDING: dealerStatusMap.PENDING.label,
+  APPROVED: dealerStatusMap.APPROVED.label,
+  REJECTED: dealerStatusMap.REJECTED.label,
 };
 
 export default function DealerApplyPage() {
@@ -24,8 +31,9 @@ export default function DealerApplyPage() {
   const [applications, setApplications] = useState<DealerApplication[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string>();
-  const [success, setSuccess] = useState(false);
+  const [feedback, setFeedback] = useState<SubmitFeedback | null>(null);
+  // 拉取序号守卫：提交后并发触发的旧列表响应不得覆盖新状态
+  const loadSeq = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,23 +64,28 @@ export default function DealerApplyPage() {
   }, []);
 
   async function loadApplications() {
+    const seq = ++loadSeq.current;
     setLoadingApps(true);
     try {
-      setApplications(await listMyApplications());
+      const next = await listMyApplications();
+      if (seq !== loadSeq.current) return; // 已有更新的拉取，丢弃过期结果
+      setApplications(next);
     } catch {
-      // 申请记录拉取失败不阻塞表单提交
+      // 拉取失败：保留当前列表（含刚提交乐观并入的记录），不静默置空
     } finally {
-      setLoadingApps(false);
+      if (seq === loadSeq.current) setLoadingApps(false);
     }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(undefined);
-    setSuccess(false);
+    setFeedback(null);
     setSubmitting(true);
 
-    const form = new FormData(event.currentTarget);
+    // 在 await 前同步取表单元素：异步期间 React 已释放合成事件的 currentTarget，
+    // 若之后再 event.currentTarget.reset() 会抛错，被 catch 当成“失败”，并中断列表刷新
+    const formEl = event.currentTarget;
+    const form = new FormData(formEl);
     const input: CreateDealerApplicationInput = {
       companyName: String(form.get("companyName") ?? "").trim(),
     };
@@ -86,16 +99,22 @@ export default function DealerApplyPage() {
     if (taxId) input.taxId = taxId;
 
     try {
-      await createDealerApplication(input);
-      setSuccess(true);
-      event.currentTarget.reset();
+      const created = await createDealerApplication(input);
+      // 乐观并入新建申请：即使随后的列表拉取失败/被并发覆盖，表单也能即时切换为待审核提示、列表也能立刻看到新记录
+      setApplications((prev) =>
+        prev.some((app) => app.id === created.id)
+          ? prev
+          : [created, ...prev],
+      );
+      setFeedback({ kind: "success", message: "申请提交成功。" });
+      formEl.reset();
       await loadApplications();
     } catch (caught) {
-      setError(
-        caught instanceof ApiError
-          ? caught.message
-          : "Unable to submit application",
-      );
+      setFeedback({
+        kind: "error",
+        message:
+          caught instanceof ApiError ? caught.message : "提交申请失败",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -114,10 +133,10 @@ export default function DealerApplyPage() {
   if (auth === "anonymous") {
     return (
       <section className="page-shell auth-panel">
-        <p className="eyebrow">Dealer</p>
-        <h1>Become a dealer</h1>
+        <p className="eyebrow">经销商</p>
+        <h1>申请成为经销商</h1>
         <p className="dealer-application__empty">
-          Please <Link href="/login">sign in</Link> to apply as a dealer.
+          请先<Link href="/login">登录</Link>，再提交经销商申请。
         </p>
       </section>
     );
@@ -127,17 +146,29 @@ export default function DealerApplyPage() {
 
   return (
     <section className="page-shell">
-      <p className="eyebrow">Dealer</p>
-      <h1>Become a dealer</h1>
+      <p className="eyebrow">经销商</p>
+      <h1>申请成为经销商</h1>
+
+      {feedback ? (
+        feedback.kind === "success" ? (
+          <p className="dealer-application__success" role="status">
+            {feedback.message}
+          </p>
+        ) : (
+          <p className="form-error" role="alert">
+            {feedback.message}
+          </p>
+        )
+      ) : null}
 
       {hasPending ? (
         <p className="dealer-application__notice">
-          You already have a pending application. We will review it shortly.
+          你已有一条待审核申请，我们会尽快审核。
         </p>
       ) : (
         <form className="dealer-application__form" onSubmit={submit}>
           <label>
-            Company name
+            公司名称
             <input
               autoComplete="organization"
               maxLength={200}
@@ -146,15 +177,15 @@ export default function DealerApplyPage() {
             />
           </label>
           <label>
-            Contact name
+            联系人
             <input autoComplete="name" maxLength={100} name="contactName" />
           </label>
           <label>
-            Contact phone
+            联系电话
             <input autoComplete="tel" maxLength={50} name="contactPhone" />
           </label>
           <label>
-            Address
+            地址
             <input
               autoComplete="street-address"
               maxLength={500}
@@ -162,25 +193,19 @@ export default function DealerApplyPage() {
             />
           </label>
           <label>
-            Tax ID
+            税号
             <input maxLength={50} name="taxId" />
           </label>
-          {error ? <p className="form-error">{error}</p> : null}
-          {success ? (
-            <p className="dealer-application__success">
-              Application submitted successfully.
-            </p>
-          ) : null}
           <button disabled={submitting} type="submit">
-            {submitting ? "Submitting" : "Submit application"}
+            {submitting ? "提交中…" : "提交申请"}
           </button>
         </form>
       )}
 
       <section className="dealer-application__list">
-        <h2>My applications</h2>
+        <h2>我的申请</h2>
         {loadingApps ? (
-          <p className="dealer-application__empty">Loading...</p>
+          <p className="dealer-application__empty">加载中…</p>
         ) : applications.length > 0 ? (
           <ul className="dealer-application__items">
             {applications.map((app) => (
@@ -198,13 +223,13 @@ export default function DealerApplyPage() {
                   <p className="dealer-application__note">{app.reviewNote}</p>
                 ) : null}
                 <p className="dealer-application__date">
-                  Submitted {new Date(app.createdAt).toLocaleDateString()}
+                  提交于 {new Date(app.createdAt).toLocaleDateString()}
                 </p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="dealer-application__empty">No applications yet.</p>
+          <p className="dealer-application__empty">暂无申请。</p>
         )}
       </section>
     </section>

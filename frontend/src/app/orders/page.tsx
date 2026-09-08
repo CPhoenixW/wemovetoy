@@ -38,7 +38,7 @@ export default function MyOrdersPage() {
           router.replace(`/login?next=${encodeURIComponent("/orders")}`);
           return;
         }
-        setError(err instanceof Error ? err.message : "Failed to load orders");
+        setError(err instanceof Error ? err.message : "订单加载失败");
       } finally {
         setLoading(false);
       }
@@ -59,40 +59,40 @@ export default function MyOrdersPage() {
     <section className="page-shell">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Account</p>
-          <h1>My Orders</h1>
+          <p className="eyebrow">我的账户</p>
+          <h1>我的订单</h1>
           <p className="page-subtitle">
-            Order history and status — prices as finalized at checkout.
+            订单历史与状态——价格为下单时最终确认价。
           </p>
         </div>
         <Link href="/products" className="link-secondary">
-          ← Continue shopping
+          ← 继续购物
         </Link>
       </div>
 
       {loading ? (
-        <p className="page-loading">Loading…</p>
+        <p className="page-loading">加载中…</p>
       ) : error && !orders ? (
         <div className="empty-state">
           <div className="empty-icon">⚠️</div>
-          <h3>Couldn’t load your orders</h3>
+          <h3>无法加载你的订单</h3>
           <p>{error}</p>
           <div className="empty-action">
             <button type="button" className="btn-secondary" onClick={() => load(page)}>
-              Retry
+              重试
             </button>
             <Link href="/products" className="btn-primary">
-              Browse products
+              去逛逛
             </Link>
           </div>
         </div>
       ) : !orders || orders.length === 0 ? (
         <EmptyState
-          title="No orders yet"
-          description="Orders you place will show up here with their current status."
+          title="暂无订单"
+          description="你下的订单会显示在这里，并带有当前状态。"
           action={
             <Link href="/products" className="btn-primary">
-              Browse products
+              去逛逛
             </Link>
           }
         />
@@ -102,32 +102,34 @@ export default function MyOrdersPage() {
             columns={[
               {
                 key: "orderNumber",
-                header: "Order",
+                header: "订单号",
                 render: (o) => <span className="mono">{o.orderNumber}</span>,
               },
               {
                 key: "createdAt",
-                header: "Date",
+                header: "下单时间",
                 render: (o) => <span className="muted-text">{formatDate(o.createdAt)}</span>,
               },
               {
                 key: "status",
-                header: "Status",
+                header: "状态",
                 render: (o) => (
                   <StatusBadge status={o.status} label={ORDER_STATUS_LABEL[o.status]} />
                 ),
               },
               {
                 key: "totalAmount",
-                header: "Total",
-                render: (o) => formatPrice(o.totalAmount),
+                header: "金额",
+                render: (o) => (
+                  <span className="tnum">{formatPrice(o.totalAmount)}</span>
+                ),
               },
               {
                 key: "view",
                 header: "",
                 render: (o) => (
                   <Link href={`/orders/${o.id}`} className="link-primary">
-                    View
+                    查看
                   </Link>
                 ),
               },
@@ -143,10 +145,10 @@ export default function MyOrdersPage() {
                 disabled={page <= 1}
                 onClick={() => goTo(page - 1)}
               >
-                Previous
+                上一页
               </button>
-              <span className="page-info">
-                Page {page} of {totalPages} · {total} order{total === 1 ? "" : "s"}
+              <span className="page-info tnum">
+                第 {page} / {totalPages} 页 · 共 {total} 笔订单
               </span>
               <button
                 type="button"
@@ -154,7 +156,7 @@ export default function MyOrdersPage() {
                 disabled={page >= totalPages}
                 onClick={() => goTo(page + 1)}
               >
-                Next
+                下一页
               </button>
             </div>
           ) : null}

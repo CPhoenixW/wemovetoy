@@ -41,19 +41,34 @@ beforeEach(() => {
 
 function fillForm(name?: string) {
   if (name) {
-    fireEvent.change(screen.getByLabelText(/Name/), {
+    fireEvent.change(screen.getByLabelText(/姓名/), {
       target: { value: name },
     });
   }
-  fireEvent.change(screen.getByLabelText("Email"), {
+  fireEvent.change(screen.getByLabelText("邮箱"), {
     target: { value: "new@wemove.local" },
   });
-  fireEvent.change(screen.getByLabelText("Password"), {
+  fireEvent.change(screen.getByLabelText("密码"), {
     target: { value: "ChangeMe123!" },
   });
 }
 
 describe("注册页", () => {
+  it("展示品牌标识、密码规则与登录后去向提示", () => {
+    mockWindowLocation("?next=%2Fproducts%2Frobot");
+    render(<RegisterPage />);
+
+    // 品牌标识块
+    expect(screen.getByText("WEMOVE")).toBeInTheDocument();
+    expect(screen.getByText(/惟®木/)).toBeInTheDocument();
+    // 密码规则实时勾选列表
+    expect(screen.getByRole("list", { name: "密码规则" })).toBeInTheDocument();
+    expect(screen.getByText("至少 8 位字符")).toBeInTheDocument();
+    // 带 next 时给出具体去向
+    expect(screen.getByText(/创建账号并登录后，将回到/)).toBeInTheDocument();
+    expect(screen.getByText(/刚才浏览的商品详情/)).toBeInTheDocument();
+  });
+
   it("无 next 时注册成功→自动登录→存 token 回首页", async () => {
     const assign = mockWindowLocation();
     mockRegister.mockResolvedValue({ id: 3, email: "new@wemove.local", name: null, role: "USER" });
@@ -64,7 +79,7 @@ describe("注册页", () => {
 
     render(<RegisterPage />);
     fillForm();
-    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+    fireEvent.click(screen.getByRole("button", { name: "创建账号" }));
 
     await waitFor(() =>
       expect(mockRegister).toHaveBeenCalledWith({
@@ -93,7 +108,7 @@ describe("注册页", () => {
 
     render(<RegisterPage />);
     fillForm("Lin");
-    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+    fireEvent.click(screen.getByRole("button", { name: "创建账号" }));
 
     await waitFor(() =>
       expect(mockRegister).toHaveBeenCalledWith({
@@ -115,7 +130,7 @@ describe("注册页", () => {
 
     render(<RegisterPage />);
     fillForm();
-    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+    fireEvent.click(screen.getByRole("button", { name: "创建账号" }));
 
     await waitFor(() =>
       expect(
@@ -133,10 +148,10 @@ describe("注册页", () => {
 
     render(<RegisterPage />);
     fillForm();
-    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+    fireEvent.click(screen.getByRole("button", { name: "创建账号" }));
 
     await waitFor(() =>
-      expect(screen.getByText(/Go to sign in/i)).toBeInTheDocument(),
+      expect(screen.getByText(/账号已创建，但自动登录失败/)).toBeInTheDocument(),
     );
     expect(assign).not.toHaveBeenCalled();
   });
