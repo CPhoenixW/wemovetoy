@@ -905,8 +905,69 @@ button:disabled { cursor: wait; opacity: 0.7; }
 
 /* ---- 商品列表（公开端） ---- */
 
+/* 顶部全宽轮换背景区：从页顶覆盖到 Newest 排序行 */
+.catalog-hero { overflow: hidden; position: relative; }
+.catalog-hero__slides { inset: 0; position: absolute; }
+.catalog-hero__slides img {
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  opacity: 0;
+  position: absolute;
+  transition: opacity 0.9s ease;
+  width: 100%;
+}
+.catalog-hero__slides img.is-active { opacity: 1; }
+/* 半透明白色渐变遮罩，保证文字叠在图上仍可读 */
+.catalog-hero::after {
+  background: linear-gradient(
+    180deg,
+    rgba(247, 248, 246, 0.9),
+    rgba(247, 248, 246, 0.72) 60%,
+    rgba(247, 248, 246, 0.9)
+  );
+  content: "";
+  inset: 0;
+  position: absolute;
+}
+.catalog-hero__content {
+  margin: 0 auto;
+  max-width: 1120px;
+  padding: 48px 32px 0;
+  position: relative;
+  z-index: 1;
+}
+.catalog-list {
+  margin: 0 auto;
+  max-width: 1120px;
+  padding: 0 32px 80px;
+}
+.catalog-list .empty-state { margin: 32px 0 0; }
+
 .search-form { display: flex; gap: 8px; margin-top: 24px; max-width: 480px; }
 .search-form input { flex: 1; }
+
+.search-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+.search-row .search-form {
+  flex: 0 1 480px;
+  margin-top: 0;
+  max-width: 100%;
+}
+.search-row__brand {
+  color: #005f57;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin: 0;
+  white-space: nowrap;
+}
 
 .sort-bar {
   border-bottom: 1px solid #dce1df;
@@ -1213,8 +1274,28 @@ button:disabled { cursor: wait; opacity: 0.7; }
   .site-header { flex-wrap: wrap; gap: 8px; min-height: auto; padding: 12px 20px; }
   .site-header nav { flex-wrap: wrap; gap: 14px; }
   .search-form { max-width: none; }
+  .catalog-hero__content, .catalog-list { padding-left: 20px; padding-right: 20px; }
   .sort-bar { gap: 14px; overflow-x: auto; white-space: nowrap; }
   .pagination { flex-wrap: wrap; }
   .product-detail__main { padding: 20px; }
   .product-detail__price { font-size: 26px; }
+}
+
+/* ---- 公司简介页 /about ---- */
+
+.about { max-width: 900px; }
+.about__title { margin-bottom: 20px; }
+.about__image {
+  background: #ffffff;
+  border: 1px solid #dce1df;
+  border-radius: 10px;
+  margin: 0 0 28px;
+  overflow: hidden;
+}
+.about__image img { display: block; height: auto; width: 100%; }
+.about__intro {
+  color: #4a5a54;
+  font-size: 15px;
+  line-height: 1.9;
+  margin: 0;
 }

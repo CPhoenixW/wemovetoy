@@ -18,9 +18,9 @@ export async function generateMetadata({
   const { slug } = await params;
   try {
     const product = await getProductBySlug(slug);
-    return { title: `${product.name} · WEMOVE SPORTS` };
+    return { title: `${product.name} · WEMOVE` };
   } catch {
-    return { title: "Product · WEMOVE SPORTS" };
+    return { title: "Product · WEMOVE" };
   }
 }
 
