@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import path from "node:path";
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
@@ -8,17 +8,20 @@ import type { ProductListResult, ProductSort } from "@/lib/api/types";
 
 const PAGE_SIZE = 12;
 
-const SHOWCASE_NAMES = ["public1", "public2", "public3"];
-const SHOWCASE_EXTS = ["png", "jpg", "jpeg", "webp"];
-
-/** 探测 public/ 下真实存在的公司展示图，返回可直接引用的 URL 列表。 */
+/** 探测 public/ 下的 publicN 系列公司展示图（如 public1.png…public7.png），按编号升序返回可引用 URL。 */
 function resolveShowcaseImages(): string[] {
-  return SHOWCASE_NAMES.flatMap((name) => {
-    const found = SHOWCASE_EXTS.find((ext) =>
-      existsSync(path.join(process.cwd(), "public", `${name}.${ext}`)),
-    );
-    return found ? [`/${name}.${found}`] : [];
-  });
+  const publicDir = path.join(process.cwd(), "public");
+  let files: string[];
+  try {
+    files = readdirSync(publicDir);
+  } catch {
+    return [];
+  }
+  return files
+    .filter((name) => /^public(\d+)\.(png|jpe?g|webp)$/.test(name))
+    .map((name) => ({ name, n: Number(/^public(\d+)/.exec(name)?.[1] ?? 0) }))
+    .sort((a, b) => a.n - b.n)
+    .map(({ name }) => `/${name}`);
 }
 
 const SORTS: { value: ProductSort; label: string }[] = [
