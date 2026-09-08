@@ -86,10 +86,15 @@ export default function DealerApplyPage() {
     if (taxId) input.taxId = taxId;
 
     try {
-      await createDealerApplication(input);
-      setSuccess(true);
+      const created = await createDealerApplication(input);
+      // 乐观更新：立即把新申请加入列表，确保 hasPending 变 true、表单消失
+      setApplications((prev) =>
+        prev.some((a) => a.id === created.id) ? prev : [created, ...prev],
+      );
       event.currentTarget.reset();
-      await loadApplications();
+      setSuccess(true);
+      // 后台最终同步；失败不影响乐观状态
+      void loadApplications();
     } catch (caught) {
       setError(
         caught instanceof ApiError

@@ -1279,6 +1279,21 @@ button:disabled { cursor: wait; opacity: 0.7; }
   .pagination { flex-wrap: wrap; }
   .product-detail__main { padding: 20px; }
   .product-detail__price { font-size: 26px; }
+
+  /* --- DataTable 允许横向滚动 --- */
+  .table-wrapper { overflow-x: auto; }
+  .data-table { min-width: 480px; }
+
+  /* --- 订单详情：单列布局 --- */
+  .order-detail__head .mono { font-size: 15px; word-break: break-all; }
+  .order-meta {
+    grid-template-columns: 1fr;
+    gap: 2px 0;
+    padding: 12px;
+  }
+  .order-meta dt { font-size: 12px; }
+  .order-detail__footer { flex-direction: column; align-items: stretch; gap: 12px; }
+  .order-detail__footer .row-actions { justify-content: flex-end; }
 }
 
 /* ---- Admin Dashboard ---- */
