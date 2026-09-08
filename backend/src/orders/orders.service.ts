@@ -154,6 +154,17 @@ export class OrdersService {
         include: { items: true },
       });
 
+      // 预留模式:下单时把购买数量累加到 variant.reserved,实际 stock 不变。
+      // 真正扣减 stock 发生在订单转为 PAID 时(见 adminUpdateStatus)。
+      await Promise.all(
+        orderItemsData.map((item) =>
+          tx.variant.update({
+            where: { id: item.variantId },
+            data: { reserved: { increment: item.quantity } },
+          }),
+        ),
+      );
+
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
       return created;
@@ -236,10 +247,22 @@ export class OrdersService {
       throw new BadRequestException("Only pending orders can be cancelled");
     }
 
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: { status: OrderStatus.CANCELLED },
-      include: { items: true },
+    // 预留模式:PENDING 订单取消时把之前预留的 reserved 数量释放回去。
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await Promise.all(
+        order.items.map((item) =>
+          tx.variant.update({
+            where: { id: item.variantId },
+            data: { reserved: { decrement: item.quantity } },
+          }),
+        ),
+      );
+
+      return tx.order.update({
+        where: { id },
+        data: { status: OrderStatus.CANCELLED },
+        include: { items: true },
+      });
     });
 
     return this.toOrderResponse(updated);
@@ -335,10 +358,51 @@ export class OrdersService {
       );
     }
 
-    const updated = await this.prisma.order.update({
-      where: { id },
-      data: { status },
-      include: { items: true },
+    // 预留模式下的库存联动:
+    // - PENDING → PAID:把预留转为真实扣减(stock -= qty, reserved -= qty)
+    // - PENDING → CANCELLED:释放预留(reserved -= qty)
+    // - PAID → CANCELLED:已扣减的库存回补(stock += qty)
+    // 其他状态转换不涉及库存变动。
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (order.status === OrderStatus.PENDING && status === OrderStatus.PAID) {
+        await Promise.all(
+          order.items.map((item) =>
+            tx.variant.update({
+              where: { id: item.variantId },
+              data: {
+                stock: { decrement: item.quantity },
+                reserved: { decrement: item.quantity },
+              },
+            }),
+          ),
+        );
+      } else if (status === OrderStatus.CANCELLED) {
+        if (order.status === OrderStatus.PENDING) {
+          await Promise.all(
+            order.items.map((item) =>
+              tx.variant.update({
+                where: { id: item.variantId },
+                data: { reserved: { decrement: item.quantity } },
+              }),
+            ),
+          );
+        } else if (order.status === OrderStatus.PAID) {
+          await Promise.all(
+            order.items.map((item) =>
+              tx.variant.update({
+                where: { id: item.variantId },
+                data: { stock: { increment: item.quantity } },
+              }),
+            ),
+          );
+        }
+      }
+
+      return tx.order.update({
+        where: { id },
+        data: { status },
+        include: { items: true },
+      });
     });
 
     return this.toOrderResponse(updated);

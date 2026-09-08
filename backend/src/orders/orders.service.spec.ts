@@ -65,6 +65,9 @@ describe("OrdersService", () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    variant: {
+      update: jest.fn().mockResolvedValue({}),
+    },
     cartItem: {
       deleteMany: jest.fn(),
     },
@@ -107,6 +110,7 @@ describe("OrdersService", () => {
 
       const tx = {
         order: { create: jest.fn().mockResolvedValue(makeOrder()) },
+        variant: { update: jest.fn().mockResolvedValue({}) },
         cartItem: {
           deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
@@ -137,6 +141,11 @@ describe("OrdersService", () => {
       });
       expect(tx.cartItem.deleteMany).toHaveBeenCalledWith({
         where: { cartId: 1 },
+      });
+      // 预留模式:下单时把购买数量累加到 reserved
+      expect(tx.variant.update).toHaveBeenCalledWith({
+        where: { id: 101 },
+        data: { reserved: { increment: 2 } },
       });
 
       expect(result.totalAmount).toBe(59.98);
@@ -210,15 +219,34 @@ describe("OrdersService", () => {
   });
 
   describe("cancelOrder", () => {
-    it("cancels the owner's pending order", async () => {
+    it("cancels the owner's pending order and releases reserved stock", async () => {
       jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
+
+      const tx = {
+        variant: { update: jest.fn().mockResolvedValue({}) },
+        order: {
+          update: jest
+            .fn()
+            .mockResolvedValue(makeOrder({ status: OrderStatus.CANCELLED })),
+        },
+      };
       jest
-        .spyOn(prisma.order, "update")
-        .mockResolvedValue(makeOrder({ status: OrderStatus.CANCELLED }));
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
 
       const result = await service.cancelOrder(5001, 10);
 
       expect(result.status).toBe(OrderStatus.CANCELLED);
+      // 预留模式:取消时释放之前预留的 reserved 数量
+      expect(tx.variant.update).toHaveBeenCalledWith({
+        where: { id: 101 },
+        data: { reserved: { decrement: 2 } },
+      });
+      expect(tx.order.update).toHaveBeenCalledWith({
+        where: { id: 5001 },
+        data: { status: OrderStatus.CANCELLED },
+        include: { items: true },
+      });
     });
 
     it("throws 400 when the order is not pending", async () => {
@@ -294,15 +322,90 @@ describe("OrdersService", () => {
   });
 
   describe("adminUpdateStatus", () => {
-    it("applies a valid transition", async () => {
+    it("PENDING → PAID converts reservation to real stock deduction", async () => {
       jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
+
+      const tx = {
+        variant: { update: jest.fn().mockResolvedValue({}) },
+        order: {
+          update: jest
+            .fn()
+            .mockResolvedValue(makeOrder({ status: OrderStatus.PAID })),
+        },
+      };
       jest
-        .spyOn(prisma.order, "update")
-        .mockResolvedValue(makeOrder({ status: OrderStatus.PAID }));
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
 
       const result = await service.adminUpdateStatus(5001, OrderStatus.PAID);
 
       expect(result.status).toBe(OrderStatus.PAID);
+      // 预留转真实扣减:stock 和 reserved 同时扣减下单数量
+      expect(tx.variant.update).toHaveBeenCalledWith({
+        where: { id: 101 },
+        data: {
+          stock: { decrement: 2 },
+          reserved: { decrement: 2 },
+        },
+      });
+    });
+
+    it("PENDING → CANCELLED releases reserved stock", async () => {
+      jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
+
+      const tx = {
+        variant: { update: jest.fn().mockResolvedValue({}) },
+        order: {
+          update: jest
+            .fn()
+            .mockResolvedValue(makeOrder({ status: OrderStatus.CANCELLED })),
+        },
+      };
+      jest
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
+
+      const result = await service.adminUpdateStatus(
+        5001,
+        OrderStatus.CANCELLED,
+      );
+
+      expect(result.status).toBe(OrderStatus.CANCELLED);
+      // 仅释放预留,不动 stock
+      expect(tx.variant.update).toHaveBeenCalledWith({
+        where: { id: 101 },
+        data: { reserved: { decrement: 2 } },
+      });
+    });
+
+    it("PAID → CANCELLED refunds stock", async () => {
+      jest
+        .spyOn(prisma.order, "findUnique")
+        .mockResolvedValue(makeOrder({ status: OrderStatus.PAID }));
+
+      const tx = {
+        variant: { update: jest.fn().mockResolvedValue({}) },
+        order: {
+          update: jest
+            .fn()
+            .mockResolvedValue(makeOrder({ status: OrderStatus.CANCELLED })),
+        },
+      };
+      jest
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
+
+      const result = await service.adminUpdateStatus(
+        5001,
+        OrderStatus.CANCELLED,
+      );
+
+      expect(result.status).toBe(OrderStatus.CANCELLED);
+      // 已扣减的 stock 回补
+      expect(tx.variant.update).toHaveBeenCalledWith({
+        where: { id: 101 },
+        data: { stock: { increment: 2 } },
+      });
     });
 
     it("throws 400 for an invalid transition", async () => {
