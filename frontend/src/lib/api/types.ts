@@ -108,6 +108,40 @@ export interface AdminProductDetail extends AdminProduct {
   variants: AdminProductVariant[];
 }
 
+// ===== SKU/变体管理（POST/PATCH/DELETE /variants/admin，ADMIN） =====
+
+export type VariantStatus = "ACTIVE" | "INACTIVE";
+
+/** Admin SKU 响应（VariantResponseDto；CRUD 返回，price 为 number） */
+export interface AdminVariant {
+  id: number;
+  sku: string;
+  name: string;
+  options: Record<string, unknown> | null;
+  price: number;
+  dealerPrice: number | null;
+  stock: number;
+  reserved: number;
+  availableStock: number;
+  status: VariantStatus;
+  isPurchasable: boolean;
+}
+
+/** 新建 SKU 入参（POST /variants/admin） */
+export interface CreateVariantInput {
+  productId: number;
+  sku: string;
+  name: string;
+  price: number;
+  dealerPrice?: number | null;
+  stock?: number;
+  options?: Record<string, string> | null;
+  status?: VariantStatus;
+}
+
+/** 编辑 SKU 入参（PATCH /variants/admin/:id，字段均可选） */
+export type UpdateVariantInput = Partial<Omit<CreateVariantInput, "productId">>;
+
 /** 商品新建/编辑入参（POST/PATCH /admin/products） */
 export interface ProductInput {
   name: string;
