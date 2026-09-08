@@ -6,9 +6,14 @@ import { listDealerProducts } from "@/lib/api/products";
 import type { DealerProduct, DealerVariant } from "@/lib/api/types";
 import { formatPrice } from "@/lib/format";
 
+const PAGE_SIZE = 20;
+
 export default function DealerProductsPage() {
   const [products, setProducts] = useState<DealerProduct[]>([]);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [addingVariant, setAddingVariant] = useState<number | null>(null);
@@ -20,13 +25,20 @@ export default function DealerProductsPage() {
     setLoading(true);
     setError("");
     try {
-      const data = await listDealerProducts({ limit: 100, search });
+      const data = await listDealerProducts({ limit: PAGE_SIZE, page, search });
       setProducts(data.items);
+      setTotal(data.total);
+      setTotalPages(data.totalPages ?? Math.ceil(data.total / PAGE_SIZE));
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载商品失败");
     } finally {
       setLoading(false);
     }
+  }, [page, search]);
+
+  // 搜索时回到第 1 页；搜索加防抖
+  useEffect(() => {
+    setPage(1);
   }, [search]);
 
   useEffect(() => {
@@ -149,6 +161,30 @@ export default function DealerProductsPage() {
           ))}
         </div>
       )}
+
+      {!loading && !error && products.length > 0 && totalPages > 1 ? (
+        <div className="pagination">
+          <button
+            type="button"
+            className="btn-secondary page-btn"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            上一页
+          </button>
+          <span className="page-info">
+            第 {page} / {totalPages} 页，共 {total} 条
+          </span>
+          <button
+            type="button"
+            className="btn-secondary page-btn"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            下一页
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

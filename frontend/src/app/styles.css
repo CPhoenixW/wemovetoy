@@ -1193,3 +1193,56 @@ button:disabled { cursor: wait; opacity: 0.7; }
   .product-detail__main { padding: 20px; }
   .product-detail__price { font-size: 26px; }
 }
+
+/* ---- 快捷入口卡（Admin Dashboard / Dealer 首页共用；若与 PR #20 同时在途，合并时保留一份即可） ---- */
+
+.quick-link-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.quick-link-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid #dde4e0;
+  border-radius: 12px;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.quick-link-card:hover {
+  border-color: #00897b;
+  box-shadow: 0 4px 14px rgba(0, 95, 87, 0.08);
+}
+.quick-link-card strong { font-size: 15px; color: #005f57; }
+
+/* ---- Dealer 企业页 ---- */
+
+.section-title { font-size: 18px; margin: 8px 0 14px; }
+.company-detail { display: flex; flex-direction: column; gap: 18px; }
+.company-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.company-name { font-size: 22px; margin: 0; }
+.invite-panel {
+  margin-top: 8px;
+  padding: 20px;
+  border: 1px solid #dde4e0;
+  border-radius: 12px;
+  background: #fff;
+}
+.invite-panel .section-title { margin-top: 0; }
+.invite-form {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 8px;
+  flex-wrap: wrap;
+}
+.invite-form .form-input { flex: 1; min-width: 220px; }
+.invite-hint { margin-top: 16px; }
