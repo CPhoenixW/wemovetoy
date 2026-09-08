@@ -37,7 +37,8 @@ export class CreateVariantDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  stock?: number = 0;
+  @Type(() => Number)
+  stock?: number;
 
   @IsOptional()
   @IsEnum(VariantStatus)
