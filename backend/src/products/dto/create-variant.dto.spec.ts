@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
 import { CreateVariantDto } from "./create-variant.dto";
+import { UpdateVariantDto } from "./update-variant.dto";
 
 const validInput = {
   productId: 1,
@@ -29,5 +30,12 @@ describe("CreateVariantDto", () => {
     });
 
     await expect(validate(dto)).resolves.toEqual([]);
+  });
+
+  it("does not apply create defaults to partial updates", () => {
+    const dto = plainToInstance(UpdateVariantDto, { name: "Updated" });
+
+    expect(dto.stock).toBeUndefined();
+    expect(dto.status).toBeUndefined();
   });
 });

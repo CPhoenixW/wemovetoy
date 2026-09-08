@@ -40,9 +40,9 @@ export class CreateVariantDto {
   @IsInt()
   @Min(0)
   @Type(() => Number)
-  stock?: number = 0;
+  stock?: number;
 
   @IsOptional()
   @IsEnum(VariantStatus)
-  status?: VariantStatus = VariantStatus.ACTIVE;
+  status?: VariantStatus;
 }
