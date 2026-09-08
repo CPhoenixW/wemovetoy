@@ -172,8 +172,12 @@ export default function DealerApplyPage() {
       ) : (
         <form className="dealer-application__form" onSubmit={submit}>
           <label>
-            公司名称<span className="required"> *</span>
+            公司名称
+            <span aria-hidden="true" className="required">
+              {" "}*
+            </span>
             <input
+              aria-label="公司名称"
               autoComplete="organization"
               maxLength={200}
               name="companyName"
