@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { OrderItem, OrderStatus, Prisma, UserRole } from "@prisma/client";
@@ -9,6 +10,17 @@ import { PrismaService } from "../prisma/prisma.service";
 import { CartService } from "../cart/cart.service";
 import { VariantsService } from "../products/variants.service";
 import { CreateOrderDto } from "./dto/create-order.dto";
+
+// Prisma 事务在写冲突/死锁时抛出的错误码:
+// P2034 - 事务因写冲突/死锁被回滚,可安全重试
+// P2037 - 超出事务超时
+const RETRIABLE_TX_ERROR_CODES = new Set(["P2034", "P2037"]);
+const MAX_TX_RETRIES = 3;
+
+// Prisma 已知错误的鸭子类型:PrismaClientKnownRequestError 暴露 { code: string }
+interface PrismaKnownError {
+  code: string;
+}
 
 export interface OrderItemResponse {
   id: number;
@@ -85,11 +97,41 @@ const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly cartService: CartService,
     private readonly variantsService: VariantsService,
   ) {}
+
+  /**
+   * 运行事务,遇到写冲突/死锁(P2034)或事务超时(P2037)时有限重试。
+   * 这些错误码意味着事务未提交,可安全重跑。业务校验异常(如 BadRequest)
+   * 不会被当作可重试错误。
+   */
+  private async runTxWithRetry<T>(
+    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= MAX_TX_RETRIES; attempt++) {
+      try {
+        return await this.prisma.$transaction(fn);
+      } catch (error) {
+        lastError = error;
+        const code = (error as Partial<PrismaKnownError>)?.code;
+        const isRetriable =
+          typeof code === "string" && RETRIABLE_TX_ERROR_CODES.has(code);
+        if (!isRetriable || attempt === MAX_TX_RETRIES) {
+          throw error;
+        }
+        this.logger.warn(
+          `Transaction write conflict (attempt ${attempt}/${MAX_TX_RETRIES}), retrying...`,
+        );
+      }
+    }
+    throw lastError;
+  }
 
   /**
    * Create an order from the user's current cart, re-checking stock and
@@ -138,16 +180,30 @@ export class OrdersService {
       });
     }
 
-    const order = await this.prisma.$transaction(async (tx) => {
+    // 多 SKU 加锁顺序:按 variantId 升序统一加锁,避免 A→B 与 B→A 互锁死锁。
+    const sortedItems = [...orderItemsData].sort((a, b) =>
+      a.variantId < b.variantId ? -1 : a.variantId > b.variantId ? 1 : 0,
+    );
+
+    const order = await this.runTxWithRetry(async (tx) => {
       // 预留模式 + 原子性:用条件 UPDATE 在同一事务内串行预留每个 variant。
-      // WHERE 子句重新校验 (stock - reserved) >= quantity,确保并发下单不会
-      // 双双通过旧快照校验而超卖。受影响行数不为 1 即库存不足,事务回滚。
-      for (const item of orderItemsData) {
+      // WHERE 子句一次性校验:
+      //   1) (stock - reserved) >= quantity  → 防超卖(并发下单串行化)
+      //   2) variant.status = 'ACTIVE'        → SKU 仍可售(防两步间被停用)
+      //   3) product.status = 'ACTIVE'        → 商品仍上架(防两步间被下架)
+      //   4) product.deleted_at IS NULL       → 商品未被软删除
+      // 任一条件不满足则受影响行数 = 0,抛 400 并回滚,不创建订单、不清购物车。
+      for (const item of sortedItems) {
         const affected: number = await tx.$executeRaw`
-          UPDATE "variants"
+          UPDATE "variants" v
           SET "reserved" = "reserved" + ${item.quantity}
-          WHERE "id" = ${item.variantId}
+          FROM "products" p
+          WHERE v."id" = ${item.variantId}
+            AND v."product_id" = p."id"
             AND ("stock" - "reserved") >= ${item.quantity}
+            AND v."status" = 'ACTIVE'
+            AND p."status" = 'ACTIVE'
+            AND p."deleted_at" IS NULL
         `;
         if (affected !== 1) {
           throw new BadRequestException(
@@ -253,10 +309,15 @@ export class OrdersService {
       throw new BadRequestException("Only pending orders can be cancelled");
     }
 
+    // 多 SKU 释放同样按 variantId 升序加锁,避免与下单路径交叉死锁。
+    const sortedItems = [...order.items].sort((a, b) =>
+      a.variantId < b.variantId ? -1 : a.variantId > b.variantId ? 1 : 0,
+    );
+
     // 原子状态转换:在事务内用条件 updateMany 把 PENDING→CANCELLED,
     // 受影响行数必须为 1。这样并发取消只有一个能赢,赢者才释放预留,
     // 败者抛错且不会重复 reserved -= quantity。
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.runTxWithRetry(async (tx) => {
       const transition = await tx.order.updateMany({
         where: { id, status: OrderStatus.PENDING },
         data: { status: OrderStatus.CANCELLED },
@@ -267,15 +328,22 @@ export class OrdersService {
         );
       }
 
-      // 赢得状态竞争后才安全释放预留库存。
-      await Promise.all(
-        order.items.map((item) =>
-          tx.variant.update({
-            where: { id: item.variantId },
-            data: { reserved: { decrement: item.quantity } },
-          }),
-        ),
-      );
+      // 赢得状态竞争后才释放预留。条件 UPDATE 要求 reserved >= quantity,
+      // 余额不足(历史数据/人工修复导致)则受影响行数 = 0,抛 500 中止,
+      // 触发事务回滚,避免 reserved 变负并把 (stock - reserved) 错误放大。
+      for (const item of sortedItems) {
+        const affected: number = await tx.$executeRaw`
+          UPDATE "variants"
+          SET "reserved" = "reserved" - ${item.quantity}
+          WHERE "id" = ${item.variantId}
+            AND "reserved" >= ${item.quantity}
+        `;
+        if (affected !== 1) {
+          throw new Error(
+            `Reserved balance underflow for variant ${item.sku}: cannot release ${item.quantity}`,
+          );
+        }
+      }
 
       const refreshed = await tx.order.findUnique({
         where: { id },
@@ -385,7 +453,13 @@ export class OrdersService {
     // - PENDING → CANCELLED:释放预留(reserved -= qty)
     // - PAID → CANCELLED:已扣减的库存回补(stock += qty)
     // 其他状态转换不涉及库存变动。
-    const updated = await this.prisma.$transaction(async (tx) => {
+    // 所有减扣都用条件 UPDATE,要求余额 >= quantity,否则受影响行数为 0,
+    // 抛错并回滚,避免 reserved/stock 变负导致 (stock - reserved) 错误放大。
+    const sortedItems = [...order.items].sort((a, b) =>
+      a.variantId < b.variantId ? -1 : a.variantId > b.variantId ? 1 : 0,
+    );
+
+    const updated = await this.runTxWithRetry(async (tx) => {
       // 原子状态转换:条件 updateMany 要求订单仍处于原状态,受影响行数必须为 1。
       // 这样并发调用(例如取消 vs 转 PAID)只有一个能赢,败者抛错且不会改动库存,
       // 避免订单状态与库存变动不一致。
@@ -399,32 +473,44 @@ export class OrdersService {
         );
       }
 
-      // 赢得状态竞争后才执行库存联动。
+      // 赢得状态竞争后才执行库存联动。按 variantId 升序逐项条件 UPDATE,
+      // 加锁顺序与 createOrder/cancelOrder 一致,避免交叉死锁。
       if (order.status === OrderStatus.PENDING && status === OrderStatus.PAID) {
-        await Promise.all(
-          order.items.map((item) =>
-            tx.variant.update({
-              where: { id: item.variantId },
-              data: {
-                stock: { decrement: item.quantity },
-                reserved: { decrement: item.quantity },
-              },
-            }),
-          ),
-        );
+        for (const item of sortedItems) {
+          const affected: number = await tx.$executeRaw`
+            UPDATE "variants"
+            SET "stock" = "stock" - ${item.quantity},
+                "reserved" = "reserved" - ${item.quantity}
+            WHERE "id" = ${item.variantId}
+              AND "reserved" >= ${item.quantity}
+              AND "stock" >= ${item.quantity}
+          `;
+          if (affected !== 1) {
+            throw new Error(
+              `Stock/reserved balance underflow for variant ${item.sku}`,
+            );
+          }
+        }
       } else if (status === OrderStatus.CANCELLED) {
         if (order.status === OrderStatus.PENDING) {
-          await Promise.all(
-            order.items.map((item) =>
-              tx.variant.update({
-                where: { id: item.variantId },
-                data: { reserved: { decrement: item.quantity } },
-              }),
-            ),
-          );
+          for (const item of sortedItems) {
+            const affected: number = await tx.$executeRaw`
+              UPDATE "variants"
+              SET "reserved" = "reserved" - ${item.quantity}
+              WHERE "id" = ${item.variantId}
+                AND "reserved" >= ${item.quantity}
+            `;
+            if (affected !== 1) {
+              throw new Error(
+                `Reserved balance underflow for variant ${item.sku}`,
+              );
+            }
+          }
         } else if (order.status === OrderStatus.PAID) {
+          // PAID→CANCELLED 是退款场景:stock += qty 是回补,无变负风险,
+          // 无需条件保护(reserved 在 PAID 时已扣完,不在此操作)。
           await Promise.all(
-            order.items.map((item) =>
+            sortedItems.map((item) =>
               tx.variant.update({
                 where: { id: item.variantId },
                 data: { stock: { increment: item.quantity } },

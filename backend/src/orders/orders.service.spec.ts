@@ -145,7 +145,7 @@ describe("OrdersService", () => {
       expect(tx.cartItem.deleteMany).toHaveBeenCalledWith({
         where: { cartId: 1 },
       });
-      // 原子条件更新:预留前在同一事务内重新校验 (stock - reserved) >= quantity
+      // 原子条件更新:预留前在同一事务内重新校验可售状态 + (stock-reserved)>=qty
       expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
       // 预留成功后才创建订单
       expect(tx.order.create).toHaveBeenCalled();
@@ -195,6 +195,43 @@ describe("OrdersService", () => {
       // 原子更新失败时不应创建订单,也不应清购物车
       expect(tx.order.create).not.toHaveBeenCalled();
       expect(tx.cartItem.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it("locks variants in ascending variantId order to avoid deadlock", async () => {
+      // 多 SKU 下单:购物车按 105→103 给出,但加锁顺序必须是 103→105(升序),
+      // 否则与另一笔 103→105 的订单交叉时会产生 A→B / B→A 死锁。
+      jest.spyOn(cartService, "getCartForCheckout").mockResolvedValue({
+        id: 1,
+        items: [
+          { variantId: 105, quantity: 1 },
+          { variantId: 103, quantity: 1 },
+        ],
+      } as never);
+      const v103 = purchasable({ variantId: 103, sku: "V-103" });
+      const v105 = purchasable({ variantId: 105, sku: "V-105" });
+      jest
+        .spyOn(variantsService, "getPurchasableVariant")
+        .mockResolvedValueOnce(v103)
+        .mockResolvedValueOnce(v105);
+
+      const tx = {
+        $executeRaw: jest.fn().mockResolvedValue(1),
+        order: { create: jest.fn().mockResolvedValue(makeOrder()) },
+        cartItem: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
+      };
+      jest
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
+
+      await service.createOrder(10, UserRole.USER, {});
+
+      // 两次 $executeRaw 的 variantId 参数顺序必须是 103, 105(升序)。
+      // tagged template 的调用签名是 [strings, ...values],本 SQL 的插值顺序是
+      // ${quantity}, ${variantId}, ${quantity},故 variantId 位于每条调用的下标 2。
+      const calls = tx.$executeRaw.mock.calls;
+      expect(calls).toHaveLength(2);
+      const lockedIds = calls.map((c) => c[2] as number);
+      expect(lockedIds).toEqual([103, 105]);
     });
   });
 
@@ -253,7 +290,7 @@ describe("OrdersService", () => {
       jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
 
       const tx = {
-        variant: { update: jest.fn().mockResolvedValue({}) },
+        $executeRaw: jest.fn().mockResolvedValue(1),
         order: {
           updateMany: jest.fn().mockResolvedValue({ count: 1 }),
           findUnique: jest
@@ -273,11 +310,8 @@ describe("OrdersService", () => {
         where: { id: 5001, status: OrderStatus.PENDING },
         data: { status: OrderStatus.CANCELLED },
       });
-      // 赢得状态竞争后才释放预留
-      expect(tx.variant.update).toHaveBeenCalledWith({
-        where: { id: 101 },
-        data: { reserved: { decrement: 2 } },
-      });
+      // 赢得状态竞争后才用条件 UPDATE 释放预留(reserved >= qty 才放行)
+      expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
     });
 
     it("throws 400 when the order is not pending", async () => {
@@ -305,7 +339,7 @@ describe("OrdersService", () => {
       jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
 
       const tx = {
-        variant: { update: jest.fn() },
+        $executeRaw: jest.fn(),
         order: {
           updateMany: jest.fn().mockResolvedValue({ count: 0 }),
           findUnique: jest.fn(),
@@ -319,7 +353,29 @@ describe("OrdersService", () => {
         BadRequestException,
       );
       // 状态竞争失败,绝不能动库存
-      expect(tx.variant.update).not.toHaveBeenCalled();
+      expect(tx.$executeRaw).not.toHaveBeenCalled();
+    });
+
+    it("rolls back with 500 when reserved balance underflows (balance protection)", async () => {
+      // 历史数据/人工修复导致 reserved < quantity:条件 UPDATE 受影响行数 = 0,
+      // 必须抛错并回滚,绝不让 reserved 变负。
+      jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
+
+      const tx = {
+        // 状态转换成功(count=1),但 reserved 释放受影响行数 = 0
+        $executeRaw: jest.fn().mockResolvedValue(0),
+        order: {
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUnique: jest.fn(),
+        },
+      };
+      jest
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
+
+      await expect(service.cancelOrder(5001, 10)).rejects.toThrow(
+        "Reserved balance underflow",
+      );
     });
   });
 
@@ -381,7 +437,8 @@ describe("OrdersService", () => {
       jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
 
       const tx = {
-        variant: { update: jest.fn().mockResolvedValue({}) },
+        $executeRaw: jest.fn().mockResolvedValue(1),
+        variant: { update: jest.fn() },
         order: {
           updateMany: jest.fn().mockResolvedValue({ count: 1 }),
           findUnique: jest
@@ -401,21 +458,16 @@ describe("OrdersService", () => {
         where: { id: 5001, status: OrderStatus.PENDING },
         data: { status: OrderStatus.PAID },
       });
-      // 预留转真实扣减:stock 和 reserved 同时扣减下单数量
-      expect(tx.variant.update).toHaveBeenCalledWith({
-        where: { id: 101 },
-        data: {
-          stock: { decrement: 2 },
-          reserved: { decrement: 2 },
-        },
-      });
+      // 预留转真实扣减:条件 UPDATE 同时扣 stock 和 reserved(要求余额 >= qty)
+      expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
     });
 
     it("PENDING → CANCELLED releases reserved stock", async () => {
       jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
 
       const tx = {
-        variant: { update: jest.fn().mockResolvedValue({}) },
+        $executeRaw: jest.fn().mockResolvedValue(1),
+        variant: { update: jest.fn() },
         order: {
           updateMany: jest.fn().mockResolvedValue({ count: 1 }),
           findUnique: jest
@@ -438,11 +490,8 @@ describe("OrdersService", () => {
         where: { id: 5001, status: OrderStatus.PENDING },
         data: { status: OrderStatus.CANCELLED },
       });
-      // 仅释放预留,不动 stock
-      expect(tx.variant.update).toHaveBeenCalledWith({
-        where: { id: 101 },
-        data: { reserved: { decrement: 2 } },
-      });
+      // 仅条件释放预留,不动 stock
+      expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
     });
 
     it("PAID → CANCELLED refunds stock", async () => {
@@ -451,6 +500,7 @@ describe("OrdersService", () => {
         .mockResolvedValue(makeOrder({ status: OrderStatus.PAID }));
 
       const tx = {
+        $executeRaw: jest.fn(),
         variant: { update: jest.fn().mockResolvedValue({}) },
         order: {
           updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -474,11 +524,12 @@ describe("OrdersService", () => {
         where: { id: 5001, status: OrderStatus.PAID },
         data: { status: OrderStatus.CANCELLED },
       });
-      // 已扣减的 stock 回补
+      // 退款回补 stock(增量,无变负风险,无需条件保护)
       expect(tx.variant.update).toHaveBeenCalledWith({
         where: { id: 101 },
         data: { stock: { increment: 2 } },
       });
+      expect(tx.$executeRaw).not.toHaveBeenCalled();
     });
 
     it("throws 400 for an invalid transition", async () => {
@@ -496,6 +547,7 @@ describe("OrdersService", () => {
       jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
 
       const tx = {
+        $executeRaw: jest.fn(),
         variant: { update: jest.fn() },
         order: {
           updateMany: jest.fn().mockResolvedValue({ count: 0 }),
@@ -510,7 +562,30 @@ describe("OrdersService", () => {
         service.adminUpdateStatus(5001, OrderStatus.PAID),
       ).rejects.toThrow(BadRequestException);
       // 状态竞争失败,绝不能动库存
+      expect(tx.$executeRaw).not.toHaveBeenCalled();
       expect(tx.variant.update).not.toHaveBeenCalled();
+    });
+
+    it("rolls back with 500 when reserved balance underflows on PENDING→PAID", async () => {
+      // 历史数据/人工修复导致 reserved < quantity:条件 UPDATE 受影响行数 = 0,
+      // 必须抛错并回滚,绝不让 stock/reserved 变负。
+      jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
+
+      const tx = {
+        $executeRaw: jest.fn().mockResolvedValue(0),
+        variant: { update: jest.fn() },
+        order: {
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUnique: jest.fn(),
+        },
+      };
+      jest
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
+
+      await expect(
+        service.adminUpdateStatus(5001, OrderStatus.PAID),
+      ).rejects.toThrow("Stock/reserved balance underflow");
     });
   });
 });
