@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getMe } from "@/lib/api/auth";
 import { getCart } from "@/lib/api/cart";
@@ -8,7 +9,22 @@ import { CART_UPDATED_EVENT } from "@/lib/cart-events";
 import { clearAuth, getStoredToken } from "@/lib/auth-storage";
 import type { AuthenticatedUser } from "@/lib/api/types";
 
+// Admin/Dealer 工作台有自己的壳层（侧栏 + 顶栏），不应再显示公开站 Header。
+// /dealer/apply 是公开的经销商申请页，保留公开 Header。
+function isPortalRoute(pathname: string) {
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
+  if (pathname === "/dealer" || pathname.startsWith("/dealer/")) {
+    return !(
+      pathname === "/dealer/apply" ||
+      pathname.startsWith("/dealer/apply/")
+    );
+  }
+  return false;
+}
+
 export function SiteHeader() {
+  const pathname = usePathname();
+
   // undefined = 尚未判断登录态；null = 未登录；对象 = 已登录
   const [user, setUser] = useState<AuthenticatedUser | null | undefined>(
     undefined,
@@ -61,6 +77,10 @@ export function SiteHeader() {
   function signOut() {
     clearAuth();
     window.location.assign("/products");
+  }
+
+  if (isPortalRoute(pathname)) {
+    return null;
   }
 
   return (

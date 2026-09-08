@@ -3,6 +3,8 @@ import type {
   CreateDealerApplicationInput,
   DealerApplication,
   DealerApplicationStatus,
+  DealerCompany,
+  DealerMember,
 } from "./types";
 
 export function createDealerApplication(
@@ -50,6 +52,51 @@ export function rejectApplication(
     {
       method: "PATCH",
       body: JSON.stringify(reviewNote ? { reviewNote } : {}),
+    },
+  );
+}
+
+// ===== Dealer 企业与成员（DEALER，仅本企业成员可访问） =====
+
+/**
+ * 当前登录经销商的企业 ID。
+ * 审批通过时后端会把 companyId 写回申请记录；无已批准申请返回 null。
+ */
+export async function getMyCompanyId(): Promise<number | null> {
+  const applications = await listMyApplications();
+  const approved = applications.find(
+    (app) => app.status === "APPROVED" && app.companyId != null,
+  );
+  return approved?.companyId ?? null;
+}
+
+/** 企业信息（GET /dealers/companies/:id） */
+export function getCompany(companyId: number): Promise<DealerCompany> {
+  return apiRequest<DealerCompany>(`dealers/companies/${companyId}`);
+}
+
+/** 企业成员列表（GET /dealers/companies/:id/members） */
+export function listCompanyMembers(
+  companyId: number,
+): Promise<DealerMember[]> {
+  return apiRequest<DealerMember[]>(
+    `dealers/companies/${companyId}/members`,
+  );
+}
+
+/**
+ * 邀请成员（POST /dealers/companies/:id/members，OWNER/ADMIN）。
+ * 后端错误：403 无权限 / 404 邮箱用户不存在 / 409 已是企业成员。
+ */
+export function addCompanyMember(
+  companyId: number,
+  email: string,
+): Promise<DealerMember> {
+  return apiRequest<DealerMember>(
+    `dealers/companies/${companyId}/members`,
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
     },
   );
 }

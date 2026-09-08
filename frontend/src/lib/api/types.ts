@@ -52,6 +52,37 @@ export interface CreateDealerApplicationInput {
   taxId?: string;
 }
 
+// ===== 经销商企业与成员（GET/POST /dealers/companies/:id，成员3） =====
+export type DealerCompanyStatus = "ACTIVE" | "SUSPENDED";
+export type DealerMemberRole = "OWNER" | "ADMIN" | "MEMBER";
+
+/** 经销商企业（GET /dealers/companies/:id） */
+export interface DealerCompany {
+  id: number;
+  name: string;
+  contactName: string | null;
+  contactPhone: string | null;
+  address: string | null;
+  taxId: string | null;
+  status: DealerCompanyStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 企业成员（GET /dealers/companies/:id/members，含用户基础信息） */
+export interface DealerMember {
+  id: number;
+  companyId: number;
+  userId: number;
+  role: DealerMemberRole;
+  createdAt: string;
+  user: {
+    id: number;
+    email: string;
+    name: string | null;
+  };
+}
+
 // ===== 分页（契约统一形态） =====
 export interface Paginated<T> {
   items: T[];

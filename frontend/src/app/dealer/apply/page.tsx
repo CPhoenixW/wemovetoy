@@ -14,7 +14,6 @@ import { dealerStatusMap } from "@/lib/format";
 
 type AuthState = "checking" | "anonymous" | "authed";
 
-/** 提交反馈：成功/失败二选一，结构上保证不会同时出现。 */
 interface SubmitFeedback {
   kind: "success" | "error";
   message: string;
@@ -32,7 +31,6 @@ export default function DealerApplyPage() {
   const [loadingApps, setLoadingApps] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<SubmitFeedback | null>(null);
-  // 拉取序号守卫：提交后并发触发的旧列表响应不得覆盖新状态
   const loadSeq = useRef(0);
 
   useEffect(() => {
@@ -68,10 +66,10 @@ export default function DealerApplyPage() {
     setLoadingApps(true);
     try {
       const next = await listMyApplications();
-      if (seq !== loadSeq.current) return; // 已有更新的拉取，丢弃过期结果
+      if (seq !== loadSeq.current) return;
       setApplications(next);
     } catch {
-      // 拉取失败：保留当前列表（含刚提交乐观并入的记录），不静默置空
+      // Keep any optimistic result visible when the background refresh fails.
     } finally {
       if (seq === loadSeq.current) setLoadingApps(false);
     }
@@ -82,8 +80,6 @@ export default function DealerApplyPage() {
     setFeedback(null);
     setSubmitting(true);
 
-    // 在 await 前同步取表单元素：异步期间 React 已释放合成事件的 currentTarget，
-    // 若之后再 event.currentTarget.reset() 会抛错，被 catch 当成“失败”，并中断列表刷新
     const formEl = event.currentTarget;
     const form = new FormData(formEl);
     const input: CreateDealerApplicationInput = {
@@ -100,11 +96,10 @@ export default function DealerApplyPage() {
 
     try {
       const created = await createDealerApplication(input);
-      // 乐观并入新建申请：即使随后的列表拉取失败/被并发覆盖，表单也能即时切换为待审核提示、列表也能立刻看到新记录
-      setApplications((prev) =>
-        prev.some((app) => app.id === created.id)
-          ? prev
-          : [created, ...prev],
+      setApplications((previous) =>
+        previous.some((application) => application.id === created.id)
+          ? previous
+          : [created, ...previous],
       );
       setFeedback({ kind: "success", message: "申请提交成功。" });
       formEl.reset();
@@ -113,7 +108,7 @@ export default function DealerApplyPage() {
       setFeedback({
         kind: "error",
         message:
-          caught instanceof ApiError ? caught.message : "提交申请失败",
+          caught instanceof ApiError ? caught.message : "提交申请失败，请稍后重试。",
       });
     } finally {
       setSubmitting(false);
@@ -133,8 +128,8 @@ export default function DealerApplyPage() {
   if (auth === "anonymous") {
     return (
       <section className="page-shell auth-panel">
-        <p className="eyebrow">经销商</p>
-        <h1>申请成为经销商</h1>
+        <p className="eyebrow">经销商合作</p>
+        <h1>成为 WEMOVE 经销商</h1>
         <p className="dealer-application__empty">
           请先<Link href="/login">登录</Link>，再提交经销商申请。
         </p>
@@ -142,12 +137,21 @@ export default function DealerApplyPage() {
     );
   }
 
-  const hasPending = applications.some((app) => app.status === "PENDING");
+  const hasPending = applications.some((application) => application.status === "PENDING");
 
   return (
     <section className="page-shell">
-      <p className="eyebrow">经销商</p>
-      <h1>申请成为经销商</h1>
+      <p className="eyebrow">经销商合作</p>
+      <h1>成为 WEMOVE 经销商</h1>
+
+      <div className="dealer-application__intro">
+        <h3>申请说明</h3>
+        <ul>
+          <li>任何合法注册的企业均可提交经销商申请，审核通过后可登录经销商门户采购商品。</li>
+          <li>请准确填写公司名称、联系人、联系电话和地址，便于我们在 3 个工作日内完成审核。</li>
+          <li>我们仅在必要范围内使用您提供的信息，用于资质核验和合作联系，不会向第三方披露。</li>
+        </ul>
+      </div>
 
       {feedback ? (
         feedback.kind === "success" ? (
@@ -168,62 +172,80 @@ export default function DealerApplyPage() {
       ) : (
         <form className="dealer-application__form" onSubmit={submit}>
           <label>
-            公司名称
+            公司名称<span className="required"> *</span>
             <input
               autoComplete="organization"
               maxLength={200}
               name="companyName"
+              placeholder="请填写营业执照上的公司全称"
               required
             />
           </label>
           <label>
             联系人
-            <input autoComplete="name" maxLength={100} name="contactName" />
+            <input
+              autoComplete="name"
+              maxLength={100}
+              name="contactName"
+              placeholder="对接人姓名"
+            />
           </label>
           <label>
             联系电话
-            <input autoComplete="tel" maxLength={50} name="contactPhone" />
+            <input
+              autoComplete="tel"
+              maxLength={50}
+              name="contactPhone"
+              placeholder="手机号或固定电话"
+            />
           </label>
           <label>
-            地址
+            公司地址
             <input
               autoComplete="street-address"
               maxLength={500}
               name="address"
+              placeholder="办公或注册地址"
             />
           </label>
           <label>
-            税号
-            <input maxLength={50} name="taxId" />
+            统一社会信用代码
+            <input
+              maxLength={50}
+              name="taxId"
+              placeholder="选填，有助于快速核验"
+            />
           </label>
-          <button disabled={submitting} type="submit">
+          <button className="btn-primary" disabled={submitting} type="submit">
             {submitting ? "提交中…" : "提交申请"}
           </button>
         </form>
       )}
 
       <section className="dealer-application__list">
-        <h2>我的申请</h2>
+        <h2>我的申请记录</h2>
         {loadingApps ? (
           <p className="dealer-application__empty">加载中…</p>
         ) : applications.length > 0 ? (
           <ul className="dealer-application__items">
-            {applications.map((app) => (
-              <li key={app.id}>
+            {applications.map((application) => (
+              <li key={application.id}>
                 <div className="dealer-application__item-head">
                   <span className="dealer-application__company">
-                    {app.companyName}
+                    {application.companyName}
                   </span>
                   <StatusBadge
-                    label={STATUS_LABEL[app.status]}
-                    status={app.status}
+                    label={STATUS_LABEL[application.status]}
+                    status={application.status}
                   />
                 </div>
-                {app.reviewNote ? (
-                  <p className="dealer-application__note">{app.reviewNote}</p>
+                {application.reviewNote ? (
+                  <p className="dealer-application__note">
+                    {application.reviewNote}
+                  </p>
                 ) : null}
                 <p className="dealer-application__date">
-                  提交于 {new Date(app.createdAt).toLocaleDateString()}
+                  提交于 {new Date(application.createdAt).toLocaleDateString()}
                 </p>
               </li>
             ))}

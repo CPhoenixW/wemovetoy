@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -139,7 +139,7 @@ export default function AdminOrdersPage() {
     <div>
       <div className="page-header">
         <div>
-          <p className="eyebrow">Admin Console</p>
+          <p className="eyebrow">管理后台</p>
           <h1>订单管理</h1>
           <p className="page-subtitle">共 {total} 个订单，搜索按订单号过滤</p>
         </div>

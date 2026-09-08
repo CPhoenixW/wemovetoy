@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -265,8 +265,8 @@ export default function AdminDealersPage() {
     <div>
       <div className="page-header">
         <div>
-          <p className="eyebrow">Admin Console</p>
-          <h1>Dealer 审核</h1>
+          <p className="eyebrow">管理后台</p>
+          <h1>经销商审核</h1>
           <p className="page-subtitle">
             共 {filtered.length} 条申请，待处理{" "}
             {applications.filter((a) => a.status === "PENDING").length} 条
