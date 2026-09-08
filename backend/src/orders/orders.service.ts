@@ -477,21 +477,19 @@ export class OrdersService {
       // 加锁顺序与 createOrder/cancelOrder 一致,避免交叉死锁。
       if (order.status === OrderStatus.PENDING && status === OrderStatus.PAID) {
         for (const item of sortedItems) {
-          // 预留转真实扣减:stock -= qty + reserved -= qty。
-          // 余额保护只要求 reserved >= qty(这是预留模式的不变量:下单时已预留)。
-          // stock 不作为硬性条件,因为 admin 可能在 PENDING 期间合法修改 stock,
-          // 真实扣减后 stock 变负属于另一层约束(应在 admin 改 stock 时拦截),
-          // 不应阻塞 PENDING→PAID 转换。
+          // 预留转真实扣减:stock -= qty + reserved -= qty。两个余额都必须足够，
+          // 即使 Admin 在待支付期间调低库存，也不能把真实库存扣成负数。
           const affected: number = await tx.$executeRaw`
             UPDATE "variants"
             SET "stock" = "stock" - ${item.quantity},
                 "reserved" = "reserved" - ${item.quantity}
             WHERE "id" = ${item.variantId}
               AND "reserved" >= ${item.quantity}
+              AND "stock" >= ${item.quantity}
           `;
           if (affected !== 1) {
-            throw new Error(
-              `Reserved balance underflow for variant ${item.sku}`,
+            throw new BadRequestException(
+              `Insufficient stock to mark order as paid for variant ${item.sku}`,
             );
           }
         }
@@ -511,16 +509,14 @@ export class OrdersService {
             }
           }
         } else if (order.status === OrderStatus.PAID) {
-          // PAID→CANCELLED 是退款场景:stock += qty 是回补,无变负风险,
-          // 无需条件保护(reserved 在 PAID 时已扣完,不在此操作)。
-          await Promise.all(
-            sortedItems.map((item) =>
-              tx.variant.update({
-                where: { id: item.variantId },
-                data: { stock: { increment: item.quantity } },
-              }),
-            ),
-          );
+          // PAID→CANCELLED 是退款场景:stock += qty 是回补,无变负风险。
+          // 仍按统一顺序逐项写入，避免多 SKU 并发回补时打乱锁顺序。
+          for (const item of sortedItems) {
+            await tx.variant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
         }
       }
 

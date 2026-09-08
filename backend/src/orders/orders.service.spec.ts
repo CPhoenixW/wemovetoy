@@ -460,6 +460,8 @@ describe("OrdersService", () => {
       });
       // 预留转真实扣减:条件 UPDATE 同时扣 stock 和 reserved(要求余额 >= qty)
       expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+      const [statement] = tx.$executeRaw.mock.calls[0];
+      expect(statement.join("?")).toContain('AND "stock" >= ?');
     });
 
     it("PENDING → CANCELLED releases reserved stock", async () => {
@@ -566,9 +568,9 @@ describe("OrdersService", () => {
       expect(tx.variant.update).not.toHaveBeenCalled();
     });
 
-    it("rolls back with 500 when reserved balance underflows on PENDING→PAID", async () => {
-      // 历史数据/人工修复导致 reserved < quantity:条件 UPDATE 受影响行数 = 0,
-      // 必须抛错并回滚,绝不让 reserved 变负。
+    it("returns 400 when stock or reserved balance cannot cover PENDING→PAID", async () => {
+      // 历史数据、人工调库存或并发状态变更导致条件 UPDATE 受影响行数 = 0。
+      // 必须回滚，绝不让 stock/reserved 变负。
       jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
 
       const tx = {
@@ -585,7 +587,7 @@ describe("OrdersService", () => {
 
       await expect(
         service.adminUpdateStatus(5001, OrderStatus.PAID),
-      ).rejects.toThrow("Reserved balance underflow");
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });
