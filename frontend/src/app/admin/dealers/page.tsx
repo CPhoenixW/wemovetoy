@@ -161,16 +161,17 @@ export default function AdminDealersPage() {
   const columns: Column<DealerApplication>[] = [
     { key: "id", header: "#", className: "col-id" },
     {
-      key: "companyName",
-      header: "公司名称",
+      // 联系人优先：第一行联系人，第二行公司名（让审核员先看到申请人主体）
+      key: "contactName",
+      header: "联系人",
       render: (row) => (
         <div>
-          <div className="company-name">{row.companyName}</div>
-          <div className="company-contact">{row.contactName}</div>
+          <div className="company-name">{row.contactName ?? "—"}</div>
+          <div className="company-contact">{row.companyName}</div>
         </div>
       ),
     },
-    { key: "contactPhone", header: "电话" },
+    { key: "contactPhone", header: "联系电话" },
     {
       key: "status",
       header: "状态",
@@ -183,11 +184,6 @@ export default function AdminDealersPage() {
       key: "createdAt",
       header: "申请时间",
       render: (row) => formatDate(row.createdAt),
-    },
-    {
-      key: "reviewedAt",
-      header: "审核时间",
-      render: (row) => formatDate(row.reviewedAt),
     },
     {
       key: "actions",

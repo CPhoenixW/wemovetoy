@@ -268,6 +268,12 @@ button:disabled { cursor: wait; opacity: 0.7; }
 }
 .required { color: #b42318; }
 .field-error { font-size: 12px; color: #b42318; }
+.field-hint {
+  font-size: 12px;
+  color: #60706a;
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
 
 /* 通用按钮 */
 .btn-primary {
@@ -432,6 +438,19 @@ button:disabled { cursor: wait; opacity: 0.7; }
 .col-id { width: 60px; }
 .col-price { width: 110px; }
 .col-actions { width: 140px; }
+/* 订单号等宽 + 客户单元格两行布局 */
+.order-number {
+  font-family: ui-monospace, "SFMono-Regular", "Menlo", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.customer-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.customer-name { font-weight: 600; }
+.customer-email { font-size: 12px; color: #60706a; }
 .link-primary {
   color: #005f57;
   text-decoration: none;
@@ -1334,6 +1353,109 @@ button:disabled { cursor: wait; opacity: 0.7; }
 .stat-card__hint { font-size: 12px; color: #60706a; }
 
 .section-title { font-size: 18px; margin: 8px 0 14px; }
+
+/* ---- 仪表盘待处理事项 ---- */
+.todo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.todo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px;
+  border: 1px solid #dde4e0;
+  border-radius: 12px;
+  background: #fff;
+}
+.todo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.todo-title { font-size: 15px; font-weight: 700; margin: 0; color: #152028; }
+.todo-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: #005f57;
+  background: rgba(0, 95, 87, 0.08);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.todo-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 2px 8px;
+  text-decoration: none;
+  color: inherit;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.todo-item:hover { background: #f3f6f4; }
+.todo-item__no {
+  font-weight: 600;
+  font-size: 14px;
+  color: #152028;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.todo-item__meta {
+  font-size: 12px;
+  color: #60706a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.todo-item__amount {
+  grid-row: 1;
+  grid-column: 2;
+  font-size: 13px;
+  font-weight: 600;
+  color: #005f57;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.todo-item__date {
+  grid-row: 2;
+  grid-column: 2;
+  font-size: 12px;
+  color: #a9b5b0;
+  text-align: right;
+}
+.todo-empty {
+  font-size: 13px;
+  color: #a9b5b0;
+  margin: 8px 0;
+}
+.todo-more {
+  font-size: 13px;
+  color: #00897b;
+  text-decoration: none;
+  margin-top: 6px;
+}
+.todo-more:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .todo-item { grid-template-columns: 1fr; }
+  .todo-item__amount,
+  .todo-item__date { grid-row: auto; grid-column: auto; text-align: left; }
+}
 
 .quick-link-grid {
   display: grid;

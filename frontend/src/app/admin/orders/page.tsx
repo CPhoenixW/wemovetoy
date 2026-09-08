@@ -70,12 +70,24 @@ export default function AdminOrdersPage() {
   }
 
   const columns: Column<AdminOrderListItem>[] = [
-    { key: "orderNumber", header: "订单号" },
+    {
+      key: "orderNumber",
+      header: "订单号",
+      render: (row) => (
+        <span className="order-number">{row.orderNumber}</span>
+      ),
+    },
     {
       key: "customer",
       header: "客户",
-      render: (row) =>
-        row.customer.name ? `${row.customer.name}（${row.customer.email}）` : row.customer.email,
+      render: (row) => (
+        <div className="customer-cell">
+          <span className="customer-name">
+            {row.customer.name ?? "—"}
+          </span>
+          <span className="customer-email">{row.customer.email}</span>
+        </div>
+      ),
     },
     {
       key: "itemCount",
@@ -108,6 +120,8 @@ export default function AdminOrdersPage() {
       className: "col-actions",
       render: (row) => {
         const actions = NEXT_ACTIONS[row.status] ?? [];
+        // 操作列只展示「详情」+ 第一个最可能的下一步，其余在详情页完成
+        const primary = actions[0];
         return (
           <div className="row-actions">
             <Link
@@ -116,19 +130,18 @@ export default function AdminOrdersPage() {
             >
               详情
             </Link>
-            {actions.map((action) => (
+            {primary ? (
               <button
-                key={action.value}
                 type="button"
                 className={
-                  action.value === "CANCELLED" ? "link-danger" : "link-primary"
+                  primary.value === "CANCELLED" ? "link-danger" : "link-primary"
                 }
                 disabled={busyId === row.id}
-                onClick={() => handleTransition(row, action.value)}
+                onClick={() => handleTransition(row, primary.value)}
               >
-                {busyId === row.id ? "处理中..." : action.label}
+                {busyId === row.id ? "处理中..." : primary.label}
               </button>
-            ))}
+            ) : null}
           </div>
         );
       },

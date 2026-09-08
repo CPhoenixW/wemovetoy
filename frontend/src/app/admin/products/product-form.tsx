@@ -16,6 +16,13 @@ const STATUS_OPTIONS: Array<{ value: ProductStatus; label: string }> = [
   { value: "ARCHIVED", label: "下架" },
 ];
 
+// 商品状态业务提示：让管理员明白每个状态的可购买/可见性影响
+const STATUS_HINTS: Record<ProductStatus, string> = {
+  DRAFT: "草稿状态：前台不可见，不可购买",
+  ACTIVE: "上架状态：前台可见并可购买",
+  ARCHIVED: "下架状态：前台不可见，已下单仍可发货",
+};
+
 export function ProductForm({ initial, submitText, onSubmit }: ProductFormProps) {
   const [form, setForm] = useState({
     name: initial?.name ?? "",
@@ -173,6 +180,9 @@ export function ProductForm({ initial, submitText, onSubmit }: ProductFormProps)
             </option>
           ))}
         </FormField>
+        <p className="field-hint" id="status-hint">
+          {STATUS_HINTS[form.status]}
+        </p>
       </div>
 
       <div className="form-grid">
