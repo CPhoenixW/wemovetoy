@@ -3,8 +3,8 @@ import { SiteHeader } from "@/components/site-header";
 import "./styles.css";
 
 export const metadata: Metadata = {
-  title: "WEMOVE SPORTS",
-  description: "WEMOVE SPORTS product platform",
+  title: "WEMOVE",
+  description: "WEMOVE product platform",
 };
 
 export default function RootLayout({

@@ -1,9 +1,25 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
+import { ShowcaseHero } from "@/components/showcase-hero";
 import { listProducts } from "@/lib/api/products";
 import type { ProductListResult, ProductSort } from "@/lib/api/types";
 
 const PAGE_SIZE = 12;
+
+const SHOWCASE_NAMES = ["public1", "public2", "public3"];
+const SHOWCASE_EXTS = ["png", "jpg", "jpeg", "webp"];
+
+/** 探测 public/ 下真实存在的公司展示图，返回可直接引用的 URL 列表。 */
+function resolveShowcaseImages(): string[] {
+  return SHOWCASE_NAMES.flatMap((name) => {
+    const found = SHOWCASE_EXTS.find((ext) =>
+      existsSync(path.join(process.cwd(), "public", `${name}.${ext}`)),
+    );
+    return found ? [`/${name}.${found}`] : [];
+  });
+}
 
 const SORTS: { value: ProductSort; label: string }[] = [
   { value: "newest", label: "Newest" },
@@ -50,6 +66,8 @@ export default async function ProductsPage({
     return qs ? `/products?${qs}` : "/products";
   };
 
+  const showcaseImages = resolveShowcaseImages();
+
   const result: ProductListResult = await listProducts({
     page,
     limit: PAGE_SIZE,
@@ -58,37 +76,47 @@ export default async function ProductsPage({
   });
 
   return (
-    <section className="page-shell">
-      <p className="eyebrow">Catalog</p>
-      <h1>Products</h1>
+    <>
+      <section className="catalog-hero">
+        <ShowcaseHero images={showcaseImages} />
+        <div className="catalog-hero__content">
+          <p className="eyebrow">Catalog</p>
+          <h1>Products</h1>
 
-      <form className="search-form" action="/products" method="get">
-        <input
-          aria-label="Search products"
-          defaultValue={search}
-          name="search"
-          placeholder="Search products"
-          type="search"
-        />
-        {sort ? <input name="sort" type="hidden" value={sort} /> : null}
-        <button type="submit">Search</button>
-      </form>
+          <div className="search-row">
+            <form className="search-form" action="/products" method="get">
+              <input
+                aria-label="Search products"
+                defaultValue={search}
+                name="search"
+                placeholder="Search products"
+                type="search"
+              />
+              {sort ? (
+                <input name="sort" type="hidden" value={sort} />
+              ) : null}
+              <button type="submit">Search</button>
+            </form>
+            <p className="search-row__brand">惟®木|WeMove®</p>
+          </div>
 
-      <nav aria-label="Sort products" className="sort-bar">
-        {SORTS.map(({ value, label }) => (
-          <Link
-            aria-current={sort === value ? "page" : undefined}
-            className={sort === value ? "is-active" : undefined}
-            href={hrefFor({ sort: value, page: "1" })}
-            key={value}
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
+          <nav aria-label="Sort products" className="sort-bar">
+            {SORTS.map(({ value, label }) => (
+              <Link
+                aria-current={sort === value ? "page" : undefined}
+                className={sort === value ? "is-active" : undefined}
+                href={hrefFor({ sort: value, page: "1" })}
+                key={value}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </section>
 
       {result.items.length > 0 ? (
-        <>
+        <section className="catalog-list">
           <div aria-label="Product catalogue" className="product-grid">
             {result.items.map((product) => (
               <ProductCard key={product.id} product={product} />
@@ -100,11 +128,13 @@ export default async function ProductsPage({
             total={result.total}
             totalPages={result.totalPages}
           />
-        </>
+        </section>
       ) : (
-        <p className="empty-state">No products found.</p>
+        <section className="catalog-list">
+          <p className="empty-state">No products found.</p>
+        </section>
       )}
-    </section>
+    </>
   );
 }
 

@@ -66,10 +66,11 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <Link className="brand" href="/products">
-        WEMOVE SPORTS
+        WEMOVE
       </Link>
       <nav aria-label="Primary navigation">
         <Link href="/products">Products</Link>
+        <Link href="/about">About</Link>
         <Link href="/dealer/apply">Dealer</Link>
         {user?.role === "USER" ? (
           <>
