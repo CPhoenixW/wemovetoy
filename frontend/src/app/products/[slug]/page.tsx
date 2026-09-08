@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/api/client";
 import { getProductBySlug } from "@/lib/api/products";
 import type { ProductDetail } from "@/lib/api/types";
 import { formatAgeRange, formatPrice } from "@/lib/format";
+import { productImageSrc } from "@/lib/product-image";
 import { AddToCartPanel } from "./add-to-cart";
 
 interface ProductDetailPageProps {
@@ -47,6 +48,8 @@ export default async function ProductDetailPage({
       ? Object.entries(product.specifications)
       : [];
 
+  const image = productImageSrc(slug);
+
   return (
     <section className="page-shell">
       <p className="back-link back-link--top">
@@ -63,6 +66,12 @@ export default async function ProductDetailPage({
 
       <div className="product-detail">
         <div className="product-detail__main">
+          {image ? (
+            <div className="product-detail__image">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={image} alt={product.name} />
+            </div>
+          ) : null}
           <p className="product-detail__price">{formatPrice(product.price)}</p>
           <p className="product-detail__short">{product.shortDescription}</p>
           <div className="product-detail__meta">
