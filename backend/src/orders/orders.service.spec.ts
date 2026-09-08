@@ -64,6 +64,7 @@ describe("OrdersService", () => {
       count: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     variant: {
       update: jest.fn().mockResolvedValue({}),
@@ -72,6 +73,7 @@ describe("OrdersService", () => {
       deleteMany: jest.fn(),
     },
     $transaction: jest.fn(),
+    $executeRaw: jest.fn(),
   } as unknown as PrismaService;
 
   const cartService = {
@@ -111,6 +113,7 @@ describe("OrdersService", () => {
       const tx = {
         order: { create: jest.fn().mockResolvedValue(makeOrder()) },
         variant: { update: jest.fn().mockResolvedValue({}) },
+        $executeRaw: jest.fn().mockResolvedValue(1),
         cartItem: {
           deleteMany: jest.fn().mockResolvedValue({ count: 1 }),
         },
@@ -142,11 +145,10 @@ describe("OrdersService", () => {
       expect(tx.cartItem.deleteMany).toHaveBeenCalledWith({
         where: { cartId: 1 },
       });
-      // 预留模式:下单时把购买数量累加到 reserved
-      expect(tx.variant.update).toHaveBeenCalledWith({
-        where: { id: 101 },
-        data: { reserved: { increment: 2 } },
-      });
+      // 原子条件更新:预留前在同一事务内重新校验 (stock - reserved) >= quantity
+      expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+      // 预留成功后才创建订单
+      expect(tx.order.create).toHaveBeenCalled();
 
       expect(result.totalAmount).toBe(59.98);
       expect(result.items[0].sku).toBe("BLOCK-50-STD");
@@ -165,6 +167,34 @@ describe("OrdersService", () => {
       await expect(service.createOrder(10, UserRole.USER, {})).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it("rolls back when atomic reservation loses the race (concurrent oversell)", async () => {
+      // 预检查通过(availableStock=20 >= 2),但事务内的条件 UPDATE 受影响行数为 0
+      // —— 模拟另一个并发结算刚刚把库存预留光了。必须回滚订单创建并抛 400。
+      jest.spyOn(cartService, "getCartForCheckout").mockResolvedValue({
+        id: 1,
+        items: [{ variantId: 101, quantity: 2 }],
+      } as never);
+      jest
+        .spyOn(variantsService, "getPurchasableVariant")
+        .mockResolvedValue(purchasable());
+
+      const tx = {
+        $executeRaw: jest.fn().mockResolvedValue(0),
+        order: { create: jest.fn() },
+        cartItem: { deleteMany: jest.fn() },
+      };
+      jest
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
+
+      await expect(service.createOrder(10, UserRole.USER, {})).rejects.toThrow(
+        BadRequestException,
+      );
+      // 原子更新失败时不应创建订单,也不应清购物车
+      expect(tx.order.create).not.toHaveBeenCalled();
+      expect(tx.cartItem.deleteMany).not.toHaveBeenCalled();
     });
   });
 
@@ -225,7 +255,8 @@ describe("OrdersService", () => {
       const tx = {
         variant: { update: jest.fn().mockResolvedValue({}) },
         order: {
-          update: jest
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUnique: jest
             .fn()
             .mockResolvedValue(makeOrder({ status: OrderStatus.CANCELLED })),
         },
@@ -237,15 +268,15 @@ describe("OrdersService", () => {
       const result = await service.cancelOrder(5001, 10);
 
       expect(result.status).toBe(OrderStatus.CANCELLED);
-      // 预留模式:取消时释放之前预留的 reserved 数量
+      // 原子条件状态转换:只有当订单仍是 PENDING 时才改为 CANCELLED
+      expect(tx.order.updateMany).toHaveBeenCalledWith({
+        where: { id: 5001, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.CANCELLED },
+      });
+      // 赢得状态竞争后才释放预留
       expect(tx.variant.update).toHaveBeenCalledWith({
         where: { id: 101 },
         data: { reserved: { decrement: 2 } },
-      });
-      expect(tx.order.update).toHaveBeenCalledWith({
-        where: { id: 5001 },
-        data: { status: OrderStatus.CANCELLED },
-        include: { items: true },
       });
     });
 
@@ -265,6 +296,30 @@ describe("OrdersService", () => {
       await expect(service.cancelOrder(5001, 99)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+
+    it("rolls back when concurrent status change loses the race", async () => {
+      // 预检查看到 PENDING,但事务内条件 updateMany 返回 count=0
+      // —— 模拟另一个并发取消(或转 PAID)刚刚赢走了状态竞争。
+      // 必须抛错且不能重复释放预留。
+      jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
+
+      const tx = {
+        variant: { update: jest.fn() },
+        order: {
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          findUnique: jest.fn(),
+        },
+      };
+      jest
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
+
+      await expect(service.cancelOrder(5001, 10)).rejects.toThrow(
+        BadRequestException,
+      );
+      // 状态竞争失败,绝不能动库存
+      expect(tx.variant.update).not.toHaveBeenCalled();
     });
   });
 
@@ -328,7 +383,8 @@ describe("OrdersService", () => {
       const tx = {
         variant: { update: jest.fn().mockResolvedValue({}) },
         order: {
-          update: jest
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUnique: jest
             .fn()
             .mockResolvedValue(makeOrder({ status: OrderStatus.PAID })),
         },
@@ -340,6 +396,11 @@ describe("OrdersService", () => {
       const result = await service.adminUpdateStatus(5001, OrderStatus.PAID);
 
       expect(result.status).toBe(OrderStatus.PAID);
+      // 原子条件状态转换:只有当订单仍是 PENDING 时才改为 PAID
+      expect(tx.order.updateMany).toHaveBeenCalledWith({
+        where: { id: 5001, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.PAID },
+      });
       // 预留转真实扣减:stock 和 reserved 同时扣减下单数量
       expect(tx.variant.update).toHaveBeenCalledWith({
         where: { id: 101 },
@@ -356,7 +417,8 @@ describe("OrdersService", () => {
       const tx = {
         variant: { update: jest.fn().mockResolvedValue({}) },
         order: {
-          update: jest
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUnique: jest
             .fn()
             .mockResolvedValue(makeOrder({ status: OrderStatus.CANCELLED })),
         },
@@ -371,6 +433,11 @@ describe("OrdersService", () => {
       );
 
       expect(result.status).toBe(OrderStatus.CANCELLED);
+      // 原子条件状态转换:只有当订单仍是 PENDING 时才改为 CANCELLED
+      expect(tx.order.updateMany).toHaveBeenCalledWith({
+        where: { id: 5001, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.CANCELLED },
+      });
       // 仅释放预留,不动 stock
       expect(tx.variant.update).toHaveBeenCalledWith({
         where: { id: 101 },
@@ -386,7 +453,8 @@ describe("OrdersService", () => {
       const tx = {
         variant: { update: jest.fn().mockResolvedValue({}) },
         order: {
-          update: jest
+          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUnique: jest
             .fn()
             .mockResolvedValue(makeOrder({ status: OrderStatus.CANCELLED })),
         },
@@ -401,6 +469,11 @@ describe("OrdersService", () => {
       );
 
       expect(result.status).toBe(OrderStatus.CANCELLED);
+      // 原子条件状态转换:只有当订单仍是 PAID 时才改为 CANCELLED
+      expect(tx.order.updateMany).toHaveBeenCalledWith({
+        where: { id: 5001, status: OrderStatus.PAID },
+        data: { status: OrderStatus.CANCELLED },
+      });
       // 已扣减的 stock 回补
       expect(tx.variant.update).toHaveBeenCalledWith({
         where: { id: 101 },
@@ -414,6 +487,30 @@ describe("OrdersService", () => {
       await expect(
         service.adminUpdateStatus(5001, OrderStatus.SHIPPED),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rolls back when concurrent status change loses the race", async () => {
+      // 预检查看到 PENDING,但事务内条件 updateMany 返回 count=0
+      // —— 模拟并发调用(取消 vs 转 PAID)抢走了状态。
+      // 必须抛错且不能动库存,保证订单状态与库存一致。
+      jest.spyOn(prisma.order, "findUnique").mockResolvedValue(makeOrder());
+
+      const tx = {
+        variant: { update: jest.fn() },
+        order: {
+          updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+          findUnique: jest.fn(),
+        },
+      };
+      jest
+        .spyOn(prisma, "$transaction")
+        .mockImplementation(async (fn) => fn(tx as never));
+
+      await expect(
+        service.adminUpdateStatus(5001, OrderStatus.PAID),
+      ).rejects.toThrow(BadRequestException);
+      // 状态竞争失败,绝不能动库存
+      expect(tx.variant.update).not.toHaveBeenCalled();
     });
   });
 });

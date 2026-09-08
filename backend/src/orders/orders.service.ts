@@ -139,6 +139,23 @@ export class OrdersService {
     }
 
     const order = await this.prisma.$transaction(async (tx) => {
+      // 预留模式 + 原子性:用条件 UPDATE 在同一事务内串行预留每个 variant。
+      // WHERE 子句重新校验 (stock - reserved) >= quantity,确保并发下单不会
+      // 双双通过旧快照校验而超卖。受影响行数不为 1 即库存不足,事务回滚。
+      for (const item of orderItemsData) {
+        const affected: number = await tx.$executeRaw`
+          UPDATE "variants"
+          SET "reserved" = "reserved" + ${item.quantity}
+          WHERE "id" = ${item.variantId}
+            AND ("stock" - "reserved") >= ${item.quantity}
+        `;
+        if (affected !== 1) {
+          throw new BadRequestException(
+            `Insufficient stock for variant ${item.sku}`,
+          );
+        }
+      }
+
       const created = await tx.order.create({
         data: {
           userId,
@@ -153,17 +170,6 @@ export class OrdersService {
         },
         include: { items: true },
       });
-
-      // 预留模式:下单时把购买数量累加到 variant.reserved,实际 stock 不变。
-      // 真正扣减 stock 发生在订单转为 PAID 时(见 adminUpdateStatus)。
-      await Promise.all(
-        orderItemsData.map((item) =>
-          tx.variant.update({
-            where: { id: item.variantId },
-            data: { reserved: { increment: item.quantity } },
-          }),
-        ),
-      );
 
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
@@ -247,8 +253,21 @@ export class OrdersService {
       throw new BadRequestException("Only pending orders can be cancelled");
     }
 
-    // 预留模式:PENDING 订单取消时把之前预留的 reserved 数量释放回去。
+    // 原子状态转换:在事务内用条件 updateMany 把 PENDING→CANCELLED,
+    // 受影响行数必须为 1。这样并发取消只有一个能赢,赢者才释放预留,
+    // 败者抛错且不会重复 reserved -= quantity。
     const updated = await this.prisma.$transaction(async (tx) => {
+      const transition = await tx.order.updateMany({
+        where: { id, status: OrderStatus.PENDING },
+        data: { status: OrderStatus.CANCELLED },
+      });
+      if (transition.count !== 1) {
+        throw new BadRequestException(
+          "Order is no longer pending; cannot cancel",
+        );
+      }
+
+      // 赢得状态竞争后才安全释放预留库存。
       await Promise.all(
         order.items.map((item) =>
           tx.variant.update({
@@ -258,11 +277,14 @@ export class OrdersService {
         ),
       );
 
-      return tx.order.update({
+      const refreshed = await tx.order.findUnique({
         where: { id },
-        data: { status: OrderStatus.CANCELLED },
         include: { items: true },
       });
+      if (!refreshed) {
+        throw new NotFoundException("Order not found");
+      }
+      return refreshed;
     });
 
     return this.toOrderResponse(updated);
@@ -364,6 +386,20 @@ export class OrdersService {
     // - PAID → CANCELLED:已扣减的库存回补(stock += qty)
     // 其他状态转换不涉及库存变动。
     const updated = await this.prisma.$transaction(async (tx) => {
+      // 原子状态转换:条件 updateMany 要求订单仍处于原状态,受影响行数必须为 1。
+      // 这样并发调用(例如取消 vs 转 PAID)只有一个能赢,败者抛错且不会改动库存,
+      // 避免订单状态与库存变动不一致。
+      const transition = await tx.order.updateMany({
+        where: { id, status: order.status },
+        data: { status },
+      });
+      if (transition.count !== 1) {
+        throw new BadRequestException(
+          `Order status changed concurrently; cannot transition to ${status}`,
+        );
+      }
+
+      // 赢得状态竞争后才执行库存联动。
       if (order.status === OrderStatus.PENDING && status === OrderStatus.PAID) {
         await Promise.all(
           order.items.map((item) =>
@@ -398,11 +434,14 @@ export class OrdersService {
         }
       }
 
-      return tx.order.update({
+      const refreshed = await tx.order.findUnique({
         where: { id },
-        data: { status },
         include: { items: true },
       });
+      if (!refreshed) {
+        throw new NotFoundException("Order not found");
+      }
+      return refreshed;
     });
 
     return this.toOrderResponse(updated);
