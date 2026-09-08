@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProductForm } from "../../product-form";
+import { VariantManager } from "./variant-manager";
 import { getAdminProduct, updateProduct } from "@/lib/api/products";
 import type { AdminProductDetail, ProductInput } from "@/lib/api/types";
 
@@ -64,7 +65,14 @@ export default function EditProductPage({
       ) : error ? (
         <p className="form-error">{error}</p>
       ) : product ? (
-        <ProductForm initial={product} submitText="保存修改" onSubmit={handleSubmit} />
+        <>
+          <ProductForm initial={product} submitText="保存修改" onSubmit={handleSubmit} />
+          <VariantManager
+            productId={product.id}
+            productStatus={product.status}
+            initialVariants={product.variants}
+          />
+        </>
       ) : null}
     </div>
   );
