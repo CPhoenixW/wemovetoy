@@ -1,5 +1,6 @@
 import { apiRequest } from "./client";
 import type {
+  AdminOrderDetail,
   AdminOrderListItem,
   AdminOrderQuery,
   CreateOrderInput,
@@ -57,8 +58,8 @@ export function listAdminOrders(
 }
 
 /** 后台订单详情（含快照明细与客户信息） */
-export function getAdminOrder(id: number): Promise<Order> {
-  return apiRequest<Order>(`admin/orders/${id}`);
+export function getAdminOrder(id: number): Promise<AdminOrderDetail> {
+  return apiRequest<AdminOrderDetail>(`admin/orders/${id}`);
 }
 
 /**

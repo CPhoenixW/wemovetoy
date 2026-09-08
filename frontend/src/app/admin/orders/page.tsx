@@ -1,25 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { listAdminOrders, updateAdminOrderStatus } from "@/lib/api/orders";
 import type { AdminOrderListItem, OrderStatus } from "@/lib/api/types";
 import { formatDate, formatPrice, orderStatusMap } from "@/lib/format";
-
-/** 与后端 STATUS_TRANSITIONS 一致的合法流转（仅展示有业务含义的动作） */
-const NEXT_ACTIONS: Partial<Record<OrderStatus, { value: OrderStatus; label: string }[]>> = {
-  PENDING: [
-    { value: "PAID", label: "确认收款" },
-    { value: "CANCELLED", label: "取消订单" },
-  ],
-  PAID: [
-    { value: "SHIPPED", label: "发货" },
-    { value: "CANCELLED", label: "取消订单" },
-  ],
-  SHIPPED: [{ value: "DELIVERED", label: "确认送达" }],
-  DELIVERED: [{ value: "COMPLETED", label: "完成订单" }],
-};
+import { ADMIN_ORDER_NEXT_ACTIONS as NEXT_ACTIONS } from "./order-actions";
 
 const statusTabs: { label: string; value?: OrderStatus }[] = [
   { label: "全部" },
@@ -120,9 +108,14 @@ export default function AdminOrdersPage() {
       className: "col-actions",
       render: (row) => {
         const actions = NEXT_ACTIONS[row.status] ?? [];
-        if (actions.length === 0) return <span className="muted-text">—</span>;
         return (
           <div className="row-actions">
+            <Link
+              href={`/admin/orders/${row.id}`}
+              className="link-secondary"
+            >
+              详情
+            </Link>
             {actions.map((action) => (
               <button
                 key={action.value}
