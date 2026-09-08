@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import Link from "next/link";
+import { CatalogToolbar } from "@/components/catalog-toolbar";
 import { ProductCard } from "@/components/product-card";
 import { ShowcaseHero } from "@/components/showcase-hero";
 import { listProducts } from "@/lib/api/products";
@@ -70,6 +71,7 @@ export default async function ProductsPage({
   };
 
   const showcaseImages = resolveShowcaseImages();
+  const hasShowcaseMedia = showcaseImages.length > 0;
 
   const result: ProductListResult = await listProducts({
     page,
@@ -81,62 +83,49 @@ export default async function ProductsPage({
   return (
     <>
       <section className="catalog-hero">
-        <ShowcaseHero images={showcaseImages} />
-        <div className="catalog-hero__content">
-          <p className="eyebrow">Catalog</p>
-          <h1>Products</h1>
-
-          <div className="search-row">
-            <form className="search-form" action="/products" method="get">
-              <input
-                aria-label="Search products"
-                defaultValue={search}
-                name="search"
-                placeholder="Search products"
-                type="search"
-              />
-              {sort ? (
-                <input name="sort" type="hidden" value={sort} />
-              ) : null}
-              <button type="submit">Search</button>
-            </form>
-            <p className="search-row__brand">惟®木|WeMove®</p>
+        <div
+          className={
+            hasShowcaseMedia
+              ? "catalog-hero__grid"
+              : "catalog-hero__grid catalog-hero__grid--text-only"
+          }
+        >
+          <div className="catalog-hero__text">
+            <p className="catalog-hero__brand">惟®木|WeMove® · WEMOVE</p>
+            <h1>Products</h1>
+            <p className="catalog-hero__lead">
+              Precision wooden track blocks for hands-on, imaginative STEAM
+              play.
+            </p>
           </div>
-
-          <nav aria-label="Sort products" className="sort-bar">
-            {SORTS.map(({ value, label }) => (
-              <Link
-                aria-current={sort === value ? "page" : undefined}
-                className={sort === value ? "is-active" : undefined}
-                href={hrefFor({ sort: value, page: "1" })}
-                key={value}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
+          {hasShowcaseMedia ? (
+            <div className="catalog-hero__media">
+              <ShowcaseHero images={showcaseImages} />
+            </div>
+          ) : null}
         </div>
       </section>
 
-      {result.items.length > 0 ? (
-        <section className="catalog-list">
-          <div aria-label="Product catalogue" className="product-grid">
-            {result.items.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-          <Pagination
-            hrefFor={hrefFor}
-            page={result.page}
-            total={result.total}
-            totalPages={result.totalPages}
-          />
-        </section>
-      ) : (
-        <section className="catalog-list">
+      <section className="catalog-list">
+        <CatalogToolbar search={search ?? ""} sort={sort} sorts={SORTS} />
+        {result.items.length > 0 ? (
+          <>
+            <div aria-label="Product catalogue" className="product-grid">
+              {result.items.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+            <Pagination
+              hrefFor={hrefFor}
+              page={result.page}
+              total={result.total}
+              totalPages={result.totalPages}
+            />
+          </>
+        ) : (
           <p className="empty-state">No products found.</p>
-        </section>
-      )}
+        )}
+      </section>
     </>
   );
 }
