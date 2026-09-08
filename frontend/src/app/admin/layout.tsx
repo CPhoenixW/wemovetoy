@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { useAuth, useLogout } from "@/lib/hooks/use-auth";
 import { AccessDenied, AuthChecking } from "@/components/ui/access-state";
 
@@ -24,6 +25,7 @@ export default function AdminLayout({
   const user = useAuth("ADMIN");
   const logout = useLogout();
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   if (!user) {
     return <AuthChecking />;
@@ -39,7 +41,15 @@ export default function AdminLayout({
 
   return (
     <div className="admin-shell">
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar${menuOpen ? " open" : ""}`}>
+        <button
+          type="button"
+          className="drawer-close"
+          onClick={() => setMenuOpen(false)}
+          aria-label="关闭导航"
+        >
+          ×
+        </button>
         <Link className="admin-brand" href="/admin">WEMOVE 管理后台</Link>
         <nav className="admin-nav">
           {adminNav.map((item) => (
@@ -47,15 +57,27 @@ export default function AdminLayout({
               key={item.href}
               href={item.href}
               className={isActive(item.href) ? "active" : ""}
+              onClick={() => setMenuOpen(false)}
             >
               {item.label}
             </Link>
           ))}
         </nav>
       </aside>
+      {menuOpen ? (
+        <div className="drawer-backdrop" onClick={() => setMenuOpen(false)} />
+      ) : null}
 
       <div className="admin-main">
         <header className="admin-topbar">
+          <button
+            type="button"
+            className="menu-toggle"
+            onClick={() => setMenuOpen(true)}
+            aria-label="打开导航"
+          >
+            ☰
+          </button>
           <span className="admin-user">
             {user.name ?? user.email}
             <span className="role-badge">{roleLabels[user.role] ?? user.role}</span>
