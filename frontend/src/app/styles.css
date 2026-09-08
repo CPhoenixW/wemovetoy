@@ -1299,3 +1299,66 @@ button:disabled { cursor: wait; opacity: 0.7; }
   line-height: 1.9;
   margin: 0;
 }
+
+/* ---- Admin Dashboard ---- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px;
+  border: 1px solid #dde4e0;
+  border-radius: 12px;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.stat-card:hover {
+  border-color: #00897b;
+  box-shadow: 0 4px 14px rgba(0, 95, 87, 0.08);
+}
+.stat-card__value { font-size: 32px; font-weight: 700; color: #005f57; line-height: 1.1; }
+.stat-card__label { font-size: 14px; font-weight: 600; }
+.stat-card__hint { font-size: 12px; color: #60706a; }
+
+.section-title { font-size: 18px; margin: 8px 0 14px; }
+
+.quick-link-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.quick-link-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid #dde4e0;
+  border-radius: 12px;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.quick-link-card:hover {
+  border-color: #00897b;
+  box-shadow: 0 4px 14px rgba(0, 95, 87, 0.08);
+}
+.quick-link-card strong { font-size: 15px; color: #005f57; }
+
+/* ---- 登录态校验 / 无权限（admin、dealer 布局兜底） ---- */
+
+.access-state {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
