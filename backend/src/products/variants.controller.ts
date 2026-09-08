@@ -102,7 +102,7 @@ export class VariantsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Delete a SKU (admin)" })
+  @ApiOperation({ summary: "Delete an unreferenced SKU (admin)" })
   async deleteVariant(@Param("id", ParseIntPipe) id: number) {
     await this.variantsService.deleteVariant(id);
     return { message: "Variant deleted successfully" };

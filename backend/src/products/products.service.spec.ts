@@ -1,7 +1,14 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import { VariantsService } from "./variants.service";
+import {
+  VariantsService,
+  VARIANT_DELETE_REFERENCE_CONFLICT_MESSAGE,
+} from "./variants.service";
 import { PrismaService } from "../prisma/prisma.service";
 
 describe("VariantsService", () => {
@@ -29,10 +36,20 @@ describe("VariantsService", () => {
     variant: {
       findUnique: jest.fn().mockResolvedValue(mockVariant),
       findMany: jest.fn().mockResolvedValue([mockVariant]),
+      delete: jest.fn(),
     },
+    cartItem: { count: jest.fn().mockResolvedValue(0) },
+    orderItem: { count: jest.fn().mockResolvedValue(0) },
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+    mockPrismaService.variant.findUnique.mockResolvedValue(mockVariant);
+    mockPrismaService.variant.findMany.mockResolvedValue([mockVariant]);
+    mockPrismaService.variant.delete.mockResolvedValue(undefined);
+    mockPrismaService.cartItem.count.mockResolvedValue(0);
+    mockPrismaService.orderItem.count.mockResolvedValue(0);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VariantsService,
@@ -132,6 +149,97 @@ describe("VariantsService", () => {
       await expect(
         service.getVariantsBySkus(["TEST-001", "TEST-001"], "RETAIL"),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe("admin variant deletion", () => {
+    it("keeps a missing SKU as a 404 and does not check references", async () => {
+      mockPrismaService.variant.findUnique.mockResolvedValueOnce(null);
+
+      let thrown: unknown;
+      try {
+        await service.deleteVariant(999);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(NotFoundException);
+      expect((thrown as NotFoundException).getStatus()).toBe(404);
+      expect(mockPrismaService.cartItem.count).not.toHaveBeenCalled();
+      expect(mockPrismaService.orderItem.count).not.toHaveBeenCalled();
+      expect(mockPrismaService.variant.delete).not.toHaveBeenCalled();
+    });
+
+    it("returns a 409 with deactivation guidance when cart items reference the SKU", async () => {
+      mockPrismaService.cartItem.count.mockResolvedValueOnce(1);
+
+      let thrown: unknown;
+      try {
+        await service.deleteVariant(1);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(ConflictException);
+      expect((thrown as ConflictException).getStatus()).toBe(409);
+      expect((thrown as ConflictException).message).toBe(
+        VARIANT_DELETE_REFERENCE_CONFLICT_MESSAGE,
+      );
+      expect(mockPrismaService.variant.delete).not.toHaveBeenCalled();
+    });
+
+    it("returns a 409 with deactivation guidance when order items reference the SKU", async () => {
+      mockPrismaService.orderItem.count.mockResolvedValueOnce(1);
+
+      let thrown: unknown;
+      try {
+        await service.deleteVariant(1);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(ConflictException);
+      expect((thrown as ConflictException).getStatus()).toBe(409);
+      expect((thrown as ConflictException).message).toBe(
+        VARIANT_DELETE_REFERENCE_CONFLICT_MESSAGE,
+      );
+      expect(mockPrismaService.variant.delete).not.toHaveBeenCalled();
+    });
+
+    it("physically deletes an unreferenced SKU", async () => {
+      await expect(service.deleteVariant(1)).resolves.toBeUndefined();
+
+      expect(mockPrismaService.cartItem.count).toHaveBeenCalledWith({
+        where: { variantId: 1 },
+      });
+      expect(mockPrismaService.orderItem.count).toHaveBeenCalledWith({
+        where: { variantId: 1 },
+      });
+      expect(mockPrismaService.variant.delete).toHaveBeenCalledWith({
+        where: { id: 1 },
+      });
+    });
+
+    it("converts a concurrent foreign-key constraint failure into the same 409", async () => {
+      mockPrismaService.variant.delete.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError("Foreign key constraint", {
+          code: "P2003",
+          clientVersion: "test",
+        }),
+      );
+
+      let thrown: unknown;
+      try {
+        await service.deleteVariant(1);
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown).toBeInstanceOf(ConflictException);
+      expect((thrown as ConflictException).getStatus()).toBe(409);
+      expect((thrown as ConflictException).message).toBe(
+        VARIANT_DELETE_REFERENCE_CONFLICT_MESSAGE,
+      );
     });
   });
 });

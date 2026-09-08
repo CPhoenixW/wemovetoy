@@ -1,6 +1,7 @@
 import {
   IsString,
   IsNumber,
+  IsInt,
   IsOptional,
   IsEnum,
   IsObject,
@@ -36,7 +37,9 @@ export class CreateVariantDto {
 
   @IsOptional()
   @IsNumber()
+  @IsInt()
   @Min(0)
+  @Type(() => Number)
   stock?: number = 0;
 
   @IsOptional()

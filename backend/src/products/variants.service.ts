@@ -13,6 +13,9 @@ import { AuthenticatedVariantDto } from "./dto/variant-lookup.dto";
 
 export type PriceAudience = "RETAIL" | "DEALER";
 
+export const VARIANT_DELETE_REFERENCE_CONFLICT_MESSAGE =
+  "This SKU is referenced by cart items or order items and cannot be deleted. Use PATCH /variants/admin/:id with status=INACTIVE to deactivate it.";
+
 export interface PurchasableVariant {
   variantId: number;
   sku: string;
@@ -384,8 +387,27 @@ export class VariantsService {
       throw new NotFoundException(`Variant with id ${id} not found`);
     }
 
-    await this.prisma.variant.delete({
-      where: { id },
-    });
+    const [cartItemCount, orderItemCount] = await Promise.all([
+      this.prisma.cartItem.count({ where: { variantId: id } }),
+      this.prisma.orderItem.count({ where: { variantId: id } }),
+    ]);
+    if (cartItemCount > 0 || orderItemCount > 0) {
+      throw new ConflictException(VARIANT_DELETE_REFERENCE_CONFLICT_MESSAGE);
+    }
+
+    try {
+      await this.prisma.variant.delete({
+        where: { id },
+      });
+    } catch (error) {
+      // References can be created after the preflight check; retain a useful 409.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2003"
+      ) {
+        throw new ConflictException(VARIANT_DELETE_REFERENCE_CONFLICT_MESSAGE);
+      }
+      throw error;
+    }
   }
 }
