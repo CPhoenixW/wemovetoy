@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { listAdminProducts } from "@/lib/api/products";
 import { listAdminOrders } from "@/lib/api/orders";
 import { listAdminApplications } from "@/lib/api/dealers";
 
-interface DashboardStats {
+interface 仪表盘Stats {
   productTotal: number;
   draftTotal: number;
   pendingOrders: number;
@@ -28,14 +28,14 @@ const quickLinks = [
   },
   {
     href: "/admin/dealers",
-    title: "Dealer 审核",
+    title: "经销商审核",
     desc: "审批经销商入驻申请",
   },
 ];
 
-export default function AdminDashboardPage() {
+export default function Admin仪表盘Page() {
   const router = useRouter();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<仪表盘Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -97,8 +97,8 @@ export default function AdminDashboardPage() {
     <div>
       <div className="page-header">
         <div>
-          <p className="eyebrow">Admin Console</p>
-          <h1>Dashboard</h1>
+          <p className="eyebrow">管理后台</p>
+          <h1>仪表盘</h1>
         </div>
       </div>
 

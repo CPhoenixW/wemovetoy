@@ -72,7 +72,7 @@ describe("Admin Dashboard 页", () => {
       "/admin/orders",
     );
     expect(
-      screen.getByRole("link", { name: /Dealer 审核/ }),
+      screen.getByRole("link", { name: /经销商审核/ }),
     ).toHaveAttribute("href", "/admin/dealers");
   });
 

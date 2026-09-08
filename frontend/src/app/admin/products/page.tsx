@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -158,7 +158,7 @@ export default function AdminProductsPage() {
     <div>
       <div className="page-header">
         <div>
-          <p className="eyebrow">Admin Console</p>
+          <p className="eyebrow">管理后台</p>
           <h1>商品管理</h1>
           <p className="page-subtitle">共 {total} 个商品，搜索按名称、描述过滤</p>
         </div>

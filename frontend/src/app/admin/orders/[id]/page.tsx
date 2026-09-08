@@ -120,7 +120,7 @@ export default function AdminOrderDetailPage() {
     <div>
       <div className="page-header">
         <div>
-          <p className="eyebrow">Admin Console</p>
+          <p className="eyebrow">管理后台</p>
           <h1>订单详情</h1>
         </div>
         <Link href="/admin/orders" className="link-secondary">

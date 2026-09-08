@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -19,7 +19,7 @@ export default function NewProductPage() {
     <div>
       <div className="page-header">
         <div>
-          <p className="eyebrow">Admin Console</p>
+          <p className="eyebrow">管理后台</p>
           <h1>新增商品</h1>
           <p className="page-subtitle">创建后可继续编辑详情与发布</p>
         </div>

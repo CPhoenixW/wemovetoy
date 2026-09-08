@@ -14,9 +14,9 @@ import { StatusBadge } from "@/components/ui/status-badge";
 type AuthState = "checking" | "anonymous" | "authed";
 
 const STATUS_LABEL: Record<DealerApplication["status"], string> = {
-  PENDING: "Pending",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
+  PENDING: "待审核",
+  APPROVED: "已通过",
+  REJECTED: "已拒绝",
 };
 
 export default function DealerApplyPage() {
@@ -86,15 +86,20 @@ export default function DealerApplyPage() {
     if (taxId) input.taxId = taxId;
 
     try {
-      await createDealerApplication(input);
-      setSuccess(true);
+      const created = await createDealerApplication(input);
+      // 乐观更新：立即把新申请加入列表
+      setApplications((prev) =>
+        prev.some((a) => a.id === created.id) ? prev : [created, ...prev],
+      );
       event.currentTarget.reset();
-      await loadApplications();
+      setSuccess(true);
+      // 后台最终同步
+      void loadApplications();
     } catch (caught) {
       setError(
         caught instanceof ApiError
           ? caught.message
-          : "Unable to submit application",
+          : "提交申请失败，请稍后重试",
       );
     } finally {
       setSubmitting(false);
@@ -114,10 +119,10 @@ export default function DealerApplyPage() {
   if (auth === "anonymous") {
     return (
       <section className="page-shell auth-panel">
-        <p className="eyebrow">Dealer</p>
-        <h1>Become a dealer</h1>
+        <p className="eyebrow">经销商合作</p>
+        <h1>成为 WEMOVE 经销商</h1>
         <p className="dealer-application__empty">
-          Please <Link href="/login">sign in</Link> to apply as a dealer.
+          请先 <Link href="/login">登录</Link> 后再提交经销商申请。
         </p>
       </section>
     );
@@ -127,60 +132,71 @@ export default function DealerApplyPage() {
 
   return (
     <section className="page-shell">
-      <p className="eyebrow">Dealer</p>
-      <h1>Become a dealer</h1>
+      <p className="eyebrow">经销商合作</p>
+      <h1>成为 WEMOVE 经销商</h1>
+
+      <div className="dealer-application__intro">
+        <h3>申请说明</h3>
+        <ul>
+          <li>任何合法注册的企业均可提交经销商申请，审核通过后可登录经销商门户采购商品。</li>
+          <li>请准确填写公司名称、联系人、联系电话和地址，便于我们在 3 个工作日内完成审核。</li>
+          <li>我们仅在必要范围内使用您提供的信息，用于资质核验和合作联系，不会向第三方披露。</li>
+        </ul>
+      </div>
 
       {hasPending ? (
         <p className="dealer-application__notice">
-          You already have a pending application. We will review it shortly.
+          您已有一份待审核的申请，我们将在近期完成审核，请耐心等待。
         </p>
       ) : (
         <form className="dealer-application__form" onSubmit={submit}>
           <label>
-            Company name
+            公司名称<span className="required"> *</span>
             <input
               autoComplete="organization"
               maxLength={200}
               name="companyName"
               required
+              placeholder="请填写营业执照上的公司全称"
             />
           </label>
           <label>
-            Contact name
-            <input autoComplete="name" maxLength={100} name="contactName" />
+            联系人
+            <input autoComplete="name" maxLength={100} name="contactName" placeholder="对接人姓名" />
           </label>
           <label>
-            Contact phone
-            <input autoComplete="tel" maxLength={50} name="contactPhone" />
+            联系电话
+            <input autoComplete="tel" maxLength={50} name="contactPhone" placeholder="手机号或固定电话" />
           </label>
           <label>
-            Address
+            公司地址
             <input
               autoComplete="street-address"
               maxLength={500}
               name="address"
+              placeholder="办公或注册地址"
             />
           </label>
           <label>
-            Tax ID
-            <input maxLength={50} name="taxId" />
+            统一社会信用代码
+            <input maxLength={50} name="taxId" placeholder="选填，有助于快速核验" />
           </label>
           {error ? <p className="form-error">{error}</p> : null}
           {success ? (
             <p className="dealer-application__success">
-              Application submitted successfully.
+              申请已提交成功，我们将尽快审核。
             </p>
           ) : null}
-          <button disabled={submitting} type="submit">
-            {submitting ? "Submitting" : "Submit application"}
+          <button disabled={submitting} type="submit" className="btn-primary">
+            {submitting ? "提交中..." : "提交申请"}
           </button>
         </form>
       )}
 
       <section className="dealer-application__list">
-        <h2>My applications</h2>
+        <h2>我的申请记录</h2>
         {loadingApps ? (
-          <p className="dealer-application__empty">Loading...</p>
+          <p className="dealer-application__empty">加载中...</p>
         ) : applications.length > 0 ? (
           <ul className="dealer-application__items">
             {applications.map((app) => (
@@ -198,13 +214,13 @@ export default function DealerApplyPage() {
                   <p className="dealer-application__note">{app.reviewNote}</p>
                 ) : null}
                 <p className="dealer-application__date">
-                  Submitted {new Date(app.createdAt).toLocaleDateString()}
+                  提交于 {new Date(app.createdAt).toLocaleDateString()}
                 </p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="dealer-application__empty">No applications yet.</p>
+          <p className="dealer-application__empty">还没有申请记录。</p>
         )}
       </section>
     </section>

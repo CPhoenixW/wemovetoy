@@ -49,7 +49,7 @@ export default function EditProductPage({
     <div>
       <div className="page-header">
         <div>
-          <p className="eyebrow">Admin Console</p>
+          <p className="eyebrow">管理后台</p>
           <h1>编辑商品</h1>
           <p className="page-subtitle">
             {product ? `正在编辑：${product.name}（ID: ${product.id}）` : `商品 ID: ${id}`}

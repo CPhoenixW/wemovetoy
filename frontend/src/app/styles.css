@@ -45,8 +45,18 @@ input, button {
   padding: 0 12px;
 }
 
-button { background: #005f57; border-color: #005f57; color: #ffffff; cursor: pointer; }
+/* 裸 button 不再强制主按钮样式，由 .btn-primary/.btn-secondary/.btn-danger 等语义类控制 */
+button { background: transparent; border-color: #a9b5b0; color: inherit; cursor: pointer; border-radius: 4px; }
 button:disabled { cursor: wait; opacity: 0.7; }
+
+/* .link-* 文字按钮覆盖全局样式，确保在表格中是纯文字链接 */
+.link-primary, .link-secondary, .link-danger, .link-success, .link-button {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 4px;
+  min-height: 0;
+}
+
 .form-error { color: #b42318; margin: 0; }
 
 @media (max-width: 640px) {
@@ -107,6 +117,25 @@ button:disabled { cursor: wait; opacity: 0.7; }
 .dealer-nav a:hover {
   background: #24302c;
   color: #ffffff;
+}
+
+/* 侧栏当前路由高亮 */
+.admin-nav a.active,
+.dealer-nav a.active {
+  background: #24302c;
+  color: #ffffff;
+  border-left: 3px solid #005f57;
+  padding-left: 29px; /* 补偿 border-left */
+}
+
+/* user.role 显示为中文 */
+.admin-user { color: #60706a; font-size: 14px; }
+.admin-user .role-badge {
+  background: #eef6f4;
+  color: #005f57;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
 }
 
 /* 主内容区 */
@@ -793,6 +822,16 @@ button:disabled { cursor: wait; opacity: 0.7; }
 }
 
 /* ============ Dealer 申请页 ============ */
+
+.dealer-application__intro {
+  background: #f2f7f5;
+  border-left: 3px solid #005f57;
+  padding: 16px 20px;
+  margin: 16px 0 24px;
+  border-radius: 4px;
+}
+.dealer-application__intro h3 { font-size: 15px; margin: 0 0 8px; color: #005f57; }
+.dealer-application__intro ul { margin: 0; padding-left: 18px; color: #4b5854; font-size: 14px; line-height: 1.8; }
 
 .dealer-application__form { max-width: 560px; }
 
