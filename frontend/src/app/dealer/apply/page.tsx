@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { clearToken, getMe, getToken, setCurrentUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { createDealerApplication, listMyApplications } from "@/lib/api/dealers";
@@ -14,6 +14,12 @@ import { dealerStatusMap } from "@/lib/format";
 
 type AuthState = "checking" | "anonymous" | "authed";
 
+/** 提交反馈：成功/失败二选一，结构上保证不会同时出现。 */
+interface SubmitFeedback {
+  kind: "success" | "error";
+  message: string;
+}
+
 const STATUS_LABEL: Record<DealerApplication["status"], string> = {
   PENDING: dealerStatusMap.PENDING.label,
   APPROVED: dealerStatusMap.APPROVED.label,
@@ -25,8 +31,9 @@ export default function DealerApplyPage() {
   const [applications, setApplications] = useState<DealerApplication[]>([]);
   const [loadingApps, setLoadingApps] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string>();
-  const [success, setSuccess] = useState(false);
+  const [feedback, setFeedback] = useState<SubmitFeedback | null>(null);
+  // 拉取序号守卫：提交后并发触发的旧列表响应不得覆盖新状态
+  const loadSeq = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,23 +64,28 @@ export default function DealerApplyPage() {
   }, []);
 
   async function loadApplications() {
+    const seq = ++loadSeq.current;
     setLoadingApps(true);
     try {
-      setApplications(await listMyApplications());
+      const next = await listMyApplications();
+      if (seq !== loadSeq.current) return; // 已有更新的拉取，丢弃过期结果
+      setApplications(next);
     } catch {
-      // 申请记录拉取失败不阻塞表单提交
+      // 拉取失败：保留当前列表（含刚提交乐观并入的记录），不静默置空
     } finally {
-      setLoadingApps(false);
+      if (seq === loadSeq.current) setLoadingApps(false);
     }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(undefined);
-    setSuccess(false);
+    setFeedback(null);
     setSubmitting(true);
 
-    const form = new FormData(event.currentTarget);
+    // 在 await 前同步取表单元素：异步期间 React 已释放合成事件的 currentTarget，
+    // 若之后再 event.currentTarget.reset() 会抛错，被 catch 当成“失败”，并中断列表刷新
+    const formEl = event.currentTarget;
+    const form = new FormData(formEl);
     const input: CreateDealerApplicationInput = {
       companyName: String(form.get("companyName") ?? "").trim(),
     };
@@ -87,16 +99,22 @@ export default function DealerApplyPage() {
     if (taxId) input.taxId = taxId;
 
     try {
-      await createDealerApplication(input);
-      setSuccess(true);
-      event.currentTarget.reset();
+      const created = await createDealerApplication(input);
+      // 乐观并入新建申请：即使随后的列表拉取失败/被并发覆盖，表单也能即时切换为待审核提示、列表也能立刻看到新记录
+      setApplications((prev) =>
+        prev.some((app) => app.id === created.id)
+          ? prev
+          : [created, ...prev],
+      );
+      setFeedback({ kind: "success", message: "申请提交成功。" });
+      formEl.reset();
       await loadApplications();
     } catch (caught) {
-      setError(
-        caught instanceof ApiError
-          ? caught.message
-          : "提交申请失败",
-      );
+      setFeedback({
+        kind: "error",
+        message:
+          caught instanceof ApiError ? caught.message : "提交申请失败",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -130,6 +148,18 @@ export default function DealerApplyPage() {
     <section className="page-shell">
       <p className="eyebrow">经销商</p>
       <h1>申请成为经销商</h1>
+
+      {feedback ? (
+        feedback.kind === "success" ? (
+          <p className="dealer-application__success" role="status">
+            {feedback.message}
+          </p>
+        ) : (
+          <p className="form-error" role="alert">
+            {feedback.message}
+          </p>
+        )
+      ) : null}
 
       {hasPending ? (
         <p className="dealer-application__notice">
@@ -166,12 +196,6 @@ export default function DealerApplyPage() {
             税号
             <input maxLength={50} name="taxId" />
           </label>
-          {error ? <p className="form-error">{error}</p> : null}
-          {success ? (
-            <p className="dealer-application__success">
-              申请提交成功。
-            </p>
-          ) : null}
           <button disabled={submitting} type="submit">
             {submitting ? "提交中…" : "提交申请"}
           </button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { ProductSort } from "@/lib/api/types";
 
@@ -27,8 +27,56 @@ export function CatalogToolbar({
   const router = useRouter();
   const [query, setQuery] = useState(search);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const sortButtonRef = useRef<HTMLButtonElement>(null);
 
   const activeSort = sort ?? "newest";
+
+  /** 关闭抽屉并把焦点还给触发按钮（键盘/读屏用户能顺着原处继续操作）。 */
+  const closeDrawer = useCallback(() => {
+    setDrawerOpen(false);
+    sortButtonRef.current?.focus();
+  }, []);
+
+  // 打开时焦点移入弹窗；Esc 关闭；Tab 在弹窗内循环，焦点不逃逸到背后内容
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+
+    const focusables = Array.from(
+      drawer.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1] ?? first;
+    // 默认聚焦当前已选中的排序项，用户可直接按方向确认或 Esc 退出
+    const initial =
+      drawer.querySelector<HTMLElement>(".catalog-drawer__option.is-active") ??
+      first;
+    initial?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDrawer();
+        return;
+      }
+      if (event.key !== "Tab" || !first || !last) return;
+      const current = document.activeElement;
+      if (event.shiftKey && current === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && current === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [drawerOpen, closeDrawer]);
 
   const buildHref = (nextSearch: string, nextSort?: ProductSort): string => {
     const params = new URLSearchParams();
@@ -83,6 +131,7 @@ export function CatalogToolbar({
             aria-label="选择排序方式"
             className="catalog-toolbar__sort-btn"
             onClick={() => setDrawerOpen(true)}
+            ref={sortButtonRef}
             type="button"
           >
             排序
@@ -94,13 +143,14 @@ export function CatalogToolbar({
         <div
           aria-label="选择排序"
           className="catalog-drawer-overlay"
-          onMouseDown={() => setDrawerOpen(false)}
+          onMouseDown={closeDrawer}
           role="presentation"
         >
           <div
             aria-modal="true"
             className="catalog-drawer"
             onMouseDown={(event) => event.stopPropagation()}
+            ref={drawerRef}
             role="dialog"
           >
             <div className="catalog-drawer__head">
@@ -108,7 +158,7 @@ export function CatalogToolbar({
               <button
                 aria-label="关闭"
                 className="catalog-drawer__close"
-                onClick={() => setDrawerOpen(false)}
+                onClick={closeDrawer}
                 type="button"
               >
                 ✕
