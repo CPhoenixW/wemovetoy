@@ -393,9 +393,11 @@ button:disabled { cursor: wait; opacity: 0.7; }
   border: 1px solid #dce1df;
   border-radius: 8px;
   overflow: hidden;
+  overflow-x: auto;
 }
 .data-table {
   width: 100%;
+  min-width: 480px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -890,7 +892,7 @@ button:disabled { cursor: wait; opacity: 0.7; }
 /* ============ 阶段A 业务页补充样式 ============ */
 
 /* 状态筛选 Tab（Admin 商品/审核页） */
-.tab-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .tab-btn {
   border: 1px solid #dce1df;
   background: #ffffff;
@@ -1342,6 +1344,10 @@ button:disabled { cursor: wait; opacity: 0.7; }
   .pagination { flex-wrap: wrap; }
   .product-detail__main { padding: 20px; }
   .product-detail__price { font-size: 26px; }
+  /* Admin order detail mobile fixes */
+  .order-meta { grid-template-columns: 1fr; gap: 4px; }
+  .order-detail__head .mono { font-size: 13px; word-break: break-all; }
+  .order-detail__footer { flex-direction: column; align-items: flex-end; gap: 8px; }
 }
 
 /* ---- Admin Dashboard ---- */
