@@ -45,7 +45,7 @@ export default function CartPage() {
         router.replace(`/login?next=${encodeURIComponent("/cart")}`);
         return;
       }
-      setError(err instanceof Error ? err.message : "Failed to load cart");
+      setError(err instanceof Error ? err.message : "购物车加载失败");
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ export default function CartPage() {
       notifyCartUpdated();
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update quantity");
+      setError(err instanceof Error ? err.message : "数量更新失败");
     } finally {
       setBusyItem(null);
     }
@@ -78,7 +78,7 @@ export default function CartPage() {
       notifyCartUpdated();
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove item");
+      setError(err instanceof Error ? err.message : "移除失败");
     } finally {
       setBusyItem(null);
     }
@@ -107,7 +107,7 @@ export default function CartPage() {
       }
       setCheckoutOpen(false);
       const message =
-        err instanceof Error ? err.message : "Failed to place order";
+        err instanceof Error ? err.message : "下单失败";
       // 服务端 400（库存/不可售/空车）时重载购物车，让行内降级态显现
       await load();
       setError(cart?.items.length ? message : "");
@@ -125,14 +125,11 @@ export default function CartPage() {
     <section className="page-shell">
       <div className="page-header">
         <div>
-          <p className="eyebrow">Storefront</p>
-          <h1>Your Cart</h1>
-          <p className="page-subtitle">
-            Retail pricing · prices &amp; stock are finalized server-side
-          </p>
+          <p className="eyebrow">商城</p>
+          <h1>购物车</h1>
         </div>
         <Link href="/products" className="link-secondary">
-          ← Continue shopping
+          ← 继续购物
         </Link>
       </div>
 
@@ -141,45 +138,45 @@ export default function CartPage() {
       {orderNumber ? (
         <div className="order-success">
           <div className="empty-icon">✅</div>
-          <h3>Order placed</h3>
+          <h3>下单成功</h3>
           <p>
-            Order number: <strong>{orderNumber}</strong>
+            订单号：<strong className="tnum">{orderNumber}</strong>
           </p>
-          <p>Thank you! Order tracking will be available in a future release.</p>
+          <p>感谢购买！订单追踪将在后续版本上线。</p>
           <div className="empty-action">
             <Link href="/orders" className="btn-secondary">
-              View my orders
+              查看我的订单
             </Link>
             <button
               type="button"
               className="btn-primary"
               onClick={() => setOrderNumber(null)}
             >
-              OK
+              好的
             </button>
           </div>
         </div>
       ) : loading ? (
-        <p className="page-loading">Loading…</p>
+        <p className="page-loading">加载中…</p>
       ) : error && !cart ? (
         <div className="cart-error">
           <p className="form-error">{error}</p>
           <div className="empty-action">
             <button type="button" className="btn-secondary" onClick={load}>
-              Retry
+              重试
             </button>
             <Link href="/products" className="btn-primary">
-              Browse products
+              去逛逛
             </Link>
           </div>
         </div>
       ) : !cart || cart.items.length === 0 ? (
         <EmptyState
-          title="Your cart is empty"
-          description="Browse the catalog to find something you like."
+          title="购物车是空的"
+          description="去目录里挑一件喜欢的吧。"
           action={
             <Link href="/products" className="btn-primary">
-              Browse products
+              去逛逛
             </Link>
           }
         />
@@ -195,33 +192,32 @@ export default function CartPage() {
                   </p>
                   {!item.isPurchasable ? (
                     <p className="cart-item-warn">
-                      This SKU is no longer purchasable — please remove it.
+                      该 SKU 已不可购买，请先移除。
                     </p>
                   ) : item.quantity > item.availableStock ? (
                     <p className="cart-item-warn">
-                      Over available stock ({item.availableStock}) — adjust
-                      quantity.
+                      超出可用库存（<span className="tnum">{item.availableStock}</span>）——请调整数量。
                     </p>
                   ) : null}
                 </div>
-                <span className="cart-item-price">
+                <span className="cart-item-price tnum">
                   {formatPrice(item.unitPrice)}
                 </span>
-                <div className="cart-item-qty">
+                <div className="cart-item-qty" aria-label="数量">
                   <button
                     type="button"
                     className="qty-btn"
-                    aria-label="Decrease"
+                    aria-label="减少数量"
                     disabled={busyItem === item.id || item.quantity <= 1}
                     onClick={() => changeQuantity(item.id, item.quantity - 1)}
                   >
                     −
                   </button>
-                  <span className="qty-value">{item.quantity}</span>
+                  <span className="qty-value tnum">{item.quantity}</span>
                   <button
                     type="button"
                     className="qty-btn"
-                    aria-label="Increase"
+                    aria-label="增加数量"
                     disabled={
                       busyItem === item.id ||
                       !item.isPurchasable ||
@@ -232,7 +228,7 @@ export default function CartPage() {
                     +
                   </button>
                 </div>
-                <span className="cart-item-subtotal">
+                <span className="cart-item-subtotal tnum">
                   {formatPrice(item.subtotal)}
                 </span>
                 <button
@@ -241,39 +237,42 @@ export default function CartPage() {
                   disabled={busyItem === item.id}
                   onClick={() => handleRemove(item.id)}
                 >
-                  Remove
+                  移除
                 </button>
               </div>
             ))}
           </div>
 
           <aside className="cart-summary">
-            <h3>Summary</h3>
+            <h3>订单摘要</h3>
             <div className="summary-row">
-              <span>Items</span>
-              <span>{cart.itemCount}</span>
+              <span>件数</span>
+              <span className="tnum">{cart.itemCount}</span>
             </div>
             <div className="summary-row total">
-              <span>Total</span>
-              <span>{formatPrice(cart.totalAmount)}</span>
+              <span>合计</span>
+              <span className="tnum">{formatPrice(cart.totalAmount)}</span>
             </div>
             {hasUnavailable ? (
               <p className="cart-item-warn">
-                Some items are unavailable — please review before checkout.
+                部分商品已不可购买，请在结算前处理。
               </p>
             ) : null}
             {overStock ? (
               <p className="cart-item-warn">
-                Some items exceed available stock — please adjust quantity.
+                部分商品超出可用库存，请调整数量。
               </p>
             ) : null}
+            <p className="checkout-note">
+              结算时，价格与库存将由服务器实际数据再次确认。
+            </p>
             <button
               type="button"
               className="btn-primary checkout-btn"
               disabled={checkoutDisabled}
               onClick={() => setCheckoutOpen(true)}
             >
-              Checkout
+              去结算
             </button>
           </aside>
         </div>
@@ -282,18 +281,17 @@ export default function CartPage() {
       <Modal
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
-        title="Checkout"
-        confirmText={submitting ? "Placing…" : "Place order"}
-        cancelText="Cancel"
+        title="确认下单"
+        confirmText={submitting ? "正在下单…" : "提交订单"}
+        cancelText="取消"
         confirmDisabled={submitting}
         onConfirm={handleCheckout}
       >
         <p className="modal-tip">
-          Shipping details are optional. Prices &amp; stock are re-validated by
-          the server when you place the order.
+          收货信息选填。提交订单时价格与库存会由服务器重新校验。
         </p>
         <FormField
-          label="Recipient"
+          label="收货人"
           name="shippingName"
           value={shipping.shippingName}
           onChange={(e) =>
@@ -301,7 +299,7 @@ export default function CartPage() {
           }
         />
         <FormField
-          label="Phone"
+          label="联系电话"
           name="shippingPhone"
           value={shipping.shippingPhone}
           onChange={(e) =>
@@ -309,7 +307,7 @@ export default function CartPage() {
           }
         />
         <FormField
-          label="Address"
+          label="收货地址"
           name="shippingAddress"
           value={shipping.shippingAddress}
           onChange={(e) =>
@@ -317,7 +315,7 @@ export default function CartPage() {
           }
         />
         <FormField
-          label="Remark (optional)"
+          label="备注（选填）"
           name="remark"
           as="textarea"
           value={shipping.remark}

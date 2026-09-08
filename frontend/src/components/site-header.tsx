@@ -68,19 +68,19 @@ export function SiteHeader() {
       <Link className="brand" href="/products">
         WEMOVE
       </Link>
-      <nav aria-label="Primary navigation">
-        <Link href="/products">Products</Link>
-        <Link href="/about">About</Link>
-        <Link href="/dealer/apply">Dealer</Link>
+      <nav aria-label="主导航">
+        <Link href="/products">商品</Link>
+        <Link href="/about">关于</Link>
+        <Link href="/dealer/apply">经销商</Link>
         {user?.role === "USER" ? (
           <>
-            <Link href="/orders">Orders</Link>
+            <Link href="/orders">我的订单</Link>
             <Link
               href="/cart"
               className="cart-link"
-              aria-label={`Cart, ${cartCount} items`}
+              aria-label={`购物车，${cartCount} 件`}
             >
-              Cart
+              购物车
               {cartCount > 0 ? (
                 <span className="cart-count">{cartCount}</span>
               ) : null}
@@ -91,11 +91,11 @@ export function SiteHeader() {
           <>
             <span className="account-name">{user.name ?? user.email}</span>
             <button className="link-button" type="button" onClick={signOut}>
-              Sign out
+              退出登录
             </button>
           </>
         ) : (
-          <Link href="/login">Account</Link>
+          <Link href="/login">账户</Link>
         )}
       </nav>
     </header>

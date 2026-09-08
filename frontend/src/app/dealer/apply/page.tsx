@@ -10,13 +10,14 @@ import type {
   DealerApplication,
 } from "@/lib/api/types";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { dealerStatusMap } from "@/lib/format";
 
 type AuthState = "checking" | "anonymous" | "authed";
 
 const STATUS_LABEL: Record<DealerApplication["status"], string> = {
-  PENDING: "Pending",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
+  PENDING: dealerStatusMap.PENDING.label,
+  APPROVED: dealerStatusMap.APPROVED.label,
+  REJECTED: dealerStatusMap.REJECTED.label,
 };
 
 export default function DealerApplyPage() {
@@ -94,7 +95,7 @@ export default function DealerApplyPage() {
       setError(
         caught instanceof ApiError
           ? caught.message
-          : "Unable to submit application",
+          : "提交申请失败",
       );
     } finally {
       setSubmitting(false);
@@ -114,10 +115,10 @@ export default function DealerApplyPage() {
   if (auth === "anonymous") {
     return (
       <section className="page-shell auth-panel">
-        <p className="eyebrow">Dealer</p>
-        <h1>Become a dealer</h1>
+        <p className="eyebrow">经销商</p>
+        <h1>申请成为经销商</h1>
         <p className="dealer-application__empty">
-          Please <Link href="/login">sign in</Link> to apply as a dealer.
+          请先<Link href="/login">登录</Link>，再提交经销商申请。
         </p>
       </section>
     );
@@ -127,17 +128,17 @@ export default function DealerApplyPage() {
 
   return (
     <section className="page-shell">
-      <p className="eyebrow">Dealer</p>
-      <h1>Become a dealer</h1>
+      <p className="eyebrow">经销商</p>
+      <h1>申请成为经销商</h1>
 
       {hasPending ? (
         <p className="dealer-application__notice">
-          You already have a pending application. We will review it shortly.
+          你已有一条待审核申请，我们会尽快审核。
         </p>
       ) : (
         <form className="dealer-application__form" onSubmit={submit}>
           <label>
-            Company name
+            公司名称
             <input
               autoComplete="organization"
               maxLength={200}
@@ -146,15 +147,15 @@ export default function DealerApplyPage() {
             />
           </label>
           <label>
-            Contact name
+            联系人
             <input autoComplete="name" maxLength={100} name="contactName" />
           </label>
           <label>
-            Contact phone
+            联系电话
             <input autoComplete="tel" maxLength={50} name="contactPhone" />
           </label>
           <label>
-            Address
+            地址
             <input
               autoComplete="street-address"
               maxLength={500}
@@ -162,25 +163,25 @@ export default function DealerApplyPage() {
             />
           </label>
           <label>
-            Tax ID
+            税号
             <input maxLength={50} name="taxId" />
           </label>
           {error ? <p className="form-error">{error}</p> : null}
           {success ? (
             <p className="dealer-application__success">
-              Application submitted successfully.
+              申请提交成功。
             </p>
           ) : null}
           <button disabled={submitting} type="submit">
-            {submitting ? "Submitting" : "Submit application"}
+            {submitting ? "提交中…" : "提交申请"}
           </button>
         </form>
       )}
 
       <section className="dealer-application__list">
-        <h2>My applications</h2>
+        <h2>我的申请</h2>
         {loadingApps ? (
-          <p className="dealer-application__empty">Loading...</p>
+          <p className="dealer-application__empty">加载中…</p>
         ) : applications.length > 0 ? (
           <ul className="dealer-application__items">
             {applications.map((app) => (
@@ -198,13 +199,13 @@ export default function DealerApplyPage() {
                   <p className="dealer-application__note">{app.reviewNote}</p>
                 ) : null}
                 <p className="dealer-application__date">
-                  Submitted {new Date(app.createdAt).toLocaleDateString()}
+                  提交于 {new Date(app.createdAt).toLocaleDateString()}
                 </p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="dealer-application__empty">No applications yet.</p>
+          <p className="dealer-application__empty">暂无申请。</p>
         )}
       </section>
     </section>

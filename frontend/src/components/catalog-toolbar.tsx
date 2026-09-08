@@ -54,19 +54,19 @@ export function CatalogToolbar({
       <div className="catalog-toolbar">
         <form className="catalog-toolbar__search" onSubmit={submitSearch}>
           <input
-            aria-label="Search products"
+            aria-label="搜索商品"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search products"
+            placeholder="搜索商品"
             type="search"
             value={query}
           />
-          <button type="submit">Search</button>
+          <button type="submit">搜索</button>
         </form>
 
         <div className="catalog-toolbar__sort">
-          <span className="catalog-toolbar__sort-label">Sort</span>
+          <span className="catalog-toolbar__sort-label">排序</span>
           <select
-            aria-label="Sort products"
+            aria-label="选择排序"
             onChange={(event) => {
               const value = event.target.value as ProductSort;
               if (value) applySort(value);
@@ -80,19 +80,19 @@ export function CatalogToolbar({
             ))}
           </select>
           <button
-            aria-label="Choose sort order"
+            aria-label="选择排序方式"
             className="catalog-toolbar__sort-btn"
             onClick={() => setDrawerOpen(true)}
             type="button"
           >
-            Sort
+            排序
           </button>
         </div>
       </div>
 
       {drawerOpen ? (
         <div
-          aria-label="Sort products"
+          aria-label="选择排序"
           className="catalog-drawer-overlay"
           onMouseDown={() => setDrawerOpen(false)}
           role="presentation"
@@ -104,9 +104,9 @@ export function CatalogToolbar({
             role="dialog"
           >
             <div className="catalog-drawer__head">
-              <h2 className="catalog-drawer__title">Sort products</h2>
+              <h2 className="catalog-drawer__title">选择排序</h2>
               <button
-                aria-label="Close"
+                aria-label="关闭"
                 className="catalog-drawer__close"
                 onClick={() => setDrawerOpen(false)}
                 type="button"

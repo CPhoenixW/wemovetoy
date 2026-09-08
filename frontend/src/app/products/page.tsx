@@ -26,11 +26,11 @@ function resolveShowcaseImages(): string[] {
 }
 
 const SORTS: { value: ProductSort; label: string }[] = [
-  { value: "newest", label: "Newest" },
-  { value: "price_asc", label: "Price ↑" },
-  { value: "price_desc", label: "Price ↓" },
-  { value: "name_asc", label: "Name A–Z" },
-  { value: "name_desc", label: "Name Z–A" },
+  { value: "newest", label: "最新上架" },
+  { value: "price_asc", label: "价格从低到高" },
+  { value: "price_desc", label: "价格从高到低" },
+  { value: "name_asc", label: "名称升序" },
+  { value: "name_desc", label: "名称降序" },
 ];
 
 interface ProductsPageProps {
@@ -92,10 +92,9 @@ export default async function ProductsPage({
         >
           <div className="catalog-hero__text">
             <p className="catalog-hero__brand">惟®木|WeMove® · WEMOVE</p>
-            <h1>Products</h1>
+            <h1>全部商品</h1>
             <p className="catalog-hero__lead">
-              Precision wooden track blocks for hands-on, imaginative STEAM
-              play.
+              高精度木质轨道积木，在动手拼搭中激发想象力与 STEAM 创造力。
             </p>
           </div>
           {hasShowcaseMedia ? (
@@ -110,7 +109,7 @@ export default async function ProductsPage({
         <CatalogToolbar search={search ?? ""} sort={sort} sorts={SORTS} />
         {result.items.length > 0 ? (
           <>
-            <div aria-label="Product catalogue" className="product-grid">
+            <div aria-label="商品列表" className="product-grid">
               {result.items.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
@@ -123,7 +122,7 @@ export default async function ProductsPage({
             />
           </>
         ) : (
-          <p className="empty-state">No products found.</p>
+          <p className="empty-state">暂无相关商品。</p>
         )}
       </section>
     </>
@@ -142,23 +141,29 @@ function Pagination({
   totalPages: number;
 }) {
   if (totalPages <= 1) {
-    return <p className="result-count">{total} products</p>;
+    return (
+      <p className="result-count">
+        共 <span className="tnum">{total}</span> 件商品
+      </p>
+    );
   }
 
   return (
-    <nav aria-label="Pagination" className="pagination">
+    <nav aria-label="分页" className="pagination">
       {page > 1 ? (
-        <Link href={hrefFor({ page: String(page - 1) })}>Prev</Link>
+        <Link href={hrefFor({ page: String(page - 1) })}>上一页</Link>
       ) : (
-        <span aria-disabled="true">Prev</span>
+        <span aria-disabled="true">上一页</span>
       )}
       <span className="pagination__info">
-        Page {page} of {totalPages} · {total} products
+        第 <span className="tnum">{page}</span> /{" "}
+        <span className="tnum">{totalPages}</span> 页 · 共{" "}
+        <span className="tnum">{total}</span> 件商品
       </span>
       {page < totalPages ? (
-        <Link href={hrefFor({ page: String(page + 1) })}>Next</Link>
+        <Link href={hrefFor({ page: String(page + 1) })}>下一页</Link>
       ) : (
-        <span aria-disabled="true">Next</span>
+        <span aria-disabled="true">下一页</span>
       )}
     </nav>
   );

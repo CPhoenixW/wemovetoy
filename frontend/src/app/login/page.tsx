@@ -6,6 +6,8 @@ import { ApiError } from "@/lib/api/client";
 import { login } from "@/lib/api/auth";
 import { storeAuth } from "@/lib/auth-storage";
 import { safeNextPath } from "@/lib/safe-next";
+import { nextDestinationLabel } from "@/lib/next-destination";
+import { AuthBrand } from "@/components/auth-brand";
 
 export default function LoginPage() {
   const [error, setError] = useState<string>();
@@ -39,7 +41,7 @@ export default function LoginPage() {
       );
     } catch (caughtError) {
       setError(
-        caughtError instanceof ApiError ? caughtError.message : "Unable to sign in",
+        caughtError instanceof ApiError ? caughtError.message : "登录失败",
       );
     } finally {
       setLoading(false);
@@ -52,32 +54,56 @@ export default function LoginPage() {
 
   return (
     <section className="page-shell auth-panel">
-      <p className="eyebrow">Account</p>
-      <h1>Sign in</h1>
+      <AuthBrand />
+      <p className="eyebrow">账户</p>
+      <h1>登录</h1>
       <form onSubmit={submit}>
         <label>
-          Email
-          <input autoComplete="email" name="email" required type="email" />
-        </label>
-        <label>
-          Password
+          <span className="field-label">邮箱</span>
           <input
-            autoComplete="current-password"
-            minLength={8}
-            name="password"
+            aria-invalid={error ? true : undefined}
+            autoComplete="email"
+            name="email"
             required
-            type="password"
+            type="email"
           />
         </label>
-        {error ? <p className="form-error">{error}</p> : null}
+        <div className="field-block">
+          <label>
+            <span className="field-label">密码</span>
+            <input
+              aria-invalid={error ? true : undefined}
+              autoComplete="current-password"
+              minLength={8}
+              name="password"
+              required
+              type="password"
+            />
+          </label>
+          <p className="field-hint">密码长度为 8–128 位</p>
+          {error ? (
+            <p className="field-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
         <button disabled={loading} type="submit">
-          {loading ? "Signing in" : "Sign in"}
+          {loading ? "正在登录…" : "登录"}
         </button>
+        {next ? (
+          <p className="destination-hint">
+            登录后将回到：<strong>{nextDestinationLabel(next)}</strong>
+          </p>
+        ) : (
+          <p className="destination-hint">
+            登录后按账号角色进入对应页面（普通用户进入商品列表）。
+          </p>
+        )}
       </form>
       <p className="auth-alt">
-        Don&apos;t have an account?{" "}
+        还没有账号？{" "}
         <Link href={registerHref} className="link-primary">
-          Create one
+          立即注册
         </Link>
       </p>
     </section>

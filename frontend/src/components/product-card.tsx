@@ -1,10 +1,15 @@
 import Link from "next/link";
 import type { Product } from "@/lib/api/types";
-import { formatAgeRange, formatPrice } from "@/lib/format";
+import {
+  formatAgeRange,
+  formatPlayEnvironment,
+  formatPrice,
+} from "@/lib/format";
 import { productImageSrc } from "@/lib/product-image";
 
 export async function ProductCard({ product }: { product: Product }) {
   const ageRange = formatAgeRange(product.ageMin, product.ageMax);
+  const environment = formatPlayEnvironment(product.playEnvironment);
   const image = productImageSrc(product.slug);
 
   return (
@@ -19,11 +24,9 @@ export async function ProductCard({ product }: { product: Product }) {
       <p className="product-card__desc">{product.shortDescription}</p>
       <div className="product-card__meta">
         {ageRange ? <span className="product-card__age">{ageRange}</span> : null}
-        {product.playEnvironment ? (
-          <span className="product-card__scene">{product.playEnvironment}</span>
-        ) : null}
+        {environment ? <span className="product-card__scene">{environment}</span> : null}
       </div>
-      <p className="product-card__price">{formatPrice(product.price)}</p>
+      <p className="product-card__price tnum">{formatPrice(product.price)}</p>
     </Link>
   );
 }

@@ -61,8 +61,8 @@ describe("AddToCartPanel 公开详情加购", () => {
     expect(basic).toHaveAttribute("aria-checked", "true");
 
     // 数量 +1 后再加购 → quantity=2
-    fireEvent.click(screen.getByRole("button", { name: "Increase" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
+    fireEvent.click(screen.getByRole("button", { name: "增加数量" }));
+    fireEvent.click(screen.getByRole("button", { name: "加入购物车" }));
 
     await waitFor(() =>
       expect(mockAddToCart).toHaveBeenCalledWith(11, 2),
@@ -75,14 +75,14 @@ describe("AddToCartPanel 公开详情加购", () => {
 
     render(<AddToCartPanel productName="Snake Set" variants={variants()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
+    fireEvent.click(screen.getByRole("button", { name: "加入购物车" }));
 
     await waitFor(() =>
       expect(
-        screen.getByText(/Snake Set.*added to cart/i),
+        screen.getByText(/已将「Snake Set.*加入购物车/),
       ).toBeInTheDocument(),
     );
-    expect(screen.getByText(/View cart & checkout/i)).toBeInTheDocument();
+    expect(screen.getByText(/查看购物车并结算/)).toBeInTheDocument();
   });
 
   it("切换到不可售 SKU 不会被选中，点击其选项无效", async () => {
@@ -105,15 +105,15 @@ describe("AddToCartPanel 公开详情加购", () => {
     const list = variants().map((v) => ({ ...v, isPurchasable: false }));
     render(<AddToCartPanel productName="Snake Set" variants={list} />);
 
-    expect(screen.queryByRole("button", { name: "Add to cart" })).toBeNull();
-    expect(screen.getByText(/No in-stock SKU available/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "加入购物车" })).toBeNull();
+    expect(screen.getByText(/目前没有可售规格/)).toBeInTheDocument();
   });
 
   it("游客加购不调接口，跳登录并带 next 回跳参数", async () => {
     // sessionStorage 已清空 → getToken() 为 null
     render(<AddToCartPanel productName="Snake Set" variants={variants()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
+    fireEvent.click(screen.getByRole("button", { name: "加入购物车" }));
 
     expect(mockAddToCart).not.toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith(
@@ -127,7 +127,7 @@ describe("AddToCartPanel 公开详情加购", () => {
 
     render(<AddToCartPanel productName="Snake Set" variants={variants()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
+    fireEvent.click(screen.getByRole("button", { name: "加入购物车" }));
 
     await waitFor(() =>
       expect(mockPush).toHaveBeenCalledWith(
@@ -145,7 +145,7 @@ describe("AddToCartPanel 公开详情加购", () => {
 
     render(<AddToCartPanel productName="Snake Set" variants={variants()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Add to cart" }));
+    fireEvent.click(screen.getByRole("button", { name: "加入购物车" }));
 
     await waitFor(() =>
       expect(
@@ -153,5 +153,32 @@ describe("AddToCartPanel 公开详情加购", () => {
       ).toHaveTextContent("Insufficient stock for variant snake-set-pro"),
     );
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("顶部大价格默认等于首个可售 SKU，切换 Pro 后随所选更新", () => {
+    render(<AddToCartPanel productName="Snake Set" variants={variants()} />);
+
+    // 默认选中 Basic：大价格与 Basic 选项价两处 ¥44.99，Pro 仅选项内一处
+    expect(screen.getAllByText("¥44.99")).toHaveLength(2);
+    expect(screen.getAllByText("¥53.99")).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("radio", { name: /Pro/ }));
+
+    // 大价格切到 Pro：Pro 选项价 + 大价格两处 ¥53.99，Basic 仅选项内一处
+    expect(screen.getAllByText("¥53.99")).toHaveLength(2);
+    expect(screen.getAllByText("¥44.99")).toHaveLength(1);
+  });
+
+  it("SKU 编码作为选中项下的辅助行显示，随所选切换", () => {
+    render(<AddToCartPanel productName="Snake Set" variants={variants()} />);
+
+    expect(screen.getByText("规格编号：")).toBeInTheDocument();
+    expect(screen.getByText("snake-set-basic")).toBeInTheDocument();
+    expect(screen.queryByText("snake-set-pro")).toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Pro/ }));
+
+    expect(screen.getByText("snake-set-pro")).toBeInTheDocument();
+    expect(screen.queryByText("snake-set-basic")).toBeNull();
   });
 });

@@ -1,9 +1,9 @@
 export default function Loading() {
   return (
     <section aria-busy="true" className="page-shell">
-      <p className="eyebrow">Catalog</p>
-      <h1>Products</h1>
-      <div aria-label="Loading products" className="product-grid">
+      <p className="eyebrow">商品目录</p>
+      <h1>全部商品</h1>
+      <div aria-label="商品加载中" className="product-grid">
         {Array.from({ length: 8 }).map((_, index) => (
           <div className="product-card" key={index}>
             <div className="skeleton skeleton--price" />

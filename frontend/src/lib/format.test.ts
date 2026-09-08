@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatPrice, formatDate, productStatusMap, orderStatusMap, dealerStatusMap } from "@/lib/format";
+import { formatPrice, formatDate, formatSpecKey, productStatusMap, orderStatusMap, dealerStatusMap } from "@/lib/format";
 
 describe("formatPrice", () => {
   it("正数格式化为带两位小数的人民币", () => {
@@ -27,6 +27,24 @@ describe("formatDate", () => {
     const iso = new Date("2026-01-15T08:30:00Z").toISOString();
     const result = formatDate(iso);
     expect(result).toMatch(/\d{1,2}\/\d{1,2} \d{2}:\d{2}/);
+  });
+});
+
+describe("formatSpecKey", () => {
+  it("英文规格键映射为中文", () => {
+    expect(formatSpecKey("material")).toBe("材质");
+    expect(formatSpecKey("ageRange")).toBe("适用年龄");
+    expect(formatSpecKey("blockCount")).toBe("积木数量");
+  });
+
+  it("兼容带空格/大写写法", () => {
+    expect(formatSpecKey("Age Range")).toBe("适用年龄");
+    expect(formatSpecKey("Material")).toBe("材质");
+  });
+
+  it("未命中的键（含已存中文键）原样透传", () => {
+    expect(formatSpecKey("材质")).toBe("材质");
+    expect(formatSpecKey("giftBox")).toBe("giftBox");
   });
 });
 

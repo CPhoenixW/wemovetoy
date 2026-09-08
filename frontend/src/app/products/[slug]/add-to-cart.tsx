@@ -15,7 +15,11 @@ interface AddToCartPanelProps {
   variants: ProductVariant[];
 }
 
-/** 公开商品详情页：选 SKU → 数量 → 加入购物车。游客/过期会话跳 /login?next=当前页。 */
+/**
+ * 公开商品详情页购买面板：
+ * 价格 → 选择规格（名称/价格/有货·缺货，SKU 降为辅助）→ 库存提示 → 规格编号 → 数量 → 加入购物车。
+ * 游客/过期会话跳 /login?next=当前页。
+ */
 export function AddToCartPanel({ productName, variants }: AddToCartPanelProps) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<number | null>(() => {
@@ -29,6 +33,8 @@ export function AddToCartPanel({ productName, variants }: AddToCartPanelProps) {
 
   const selected = variants.find((v) => v.id === selectedId) ?? null;
   const hasStock = variants.some((v) => v.isPurchasable);
+  // 全缺货（无默认选中项）时，顶部价格回退展示首个 SKU 的价格
+  const priceSource = selected ?? variants[0] ?? null;
 
   function returnToLogin() {
     const target = window.location.pathname + window.location.search;
@@ -54,7 +60,7 @@ export function AddToCartPanel({ productName, variants }: AddToCartPanelProps) {
         returnToLogin();
         return;
       }
-      setError(err instanceof Error ? err.message : "Failed to add to cart");
+      setError(err instanceof Error ? err.message : "加入购物车失败");
     } finally {
       setBusy(false);
     }
@@ -62,9 +68,13 @@ export function AddToCartPanel({ productName, variants }: AddToCartPanelProps) {
 
   return (
     <div className="add-to-cart-panel">
+      {priceSource ? (
+        <p className="buy-box__price tnum">{formatPrice(priceSource.price)}</p>
+      ) : null}
+
       <fieldset className="add-to-cart-fieldset" disabled={!hasStock}>
-        <legend className="add-to-cart-panel__title">Select SKU</legend>
-        <div className="variant-pick" role="radiogroup" aria-label="Variant">
+        <legend className="add-to-cart-panel__title">选择规格</legend>
+        <div className="variant-pick" role="radiogroup" aria-label="规格">
           {variants.map((variant) => {
             const active = selectedId === variant.id;
             return (
@@ -85,16 +95,17 @@ export function AddToCartPanel({ productName, variants }: AddToCartPanelProps) {
                   setError("");
                 }}
               >
-                <span className="variant-pick__name">
-                  {variant.name}
-                  <span className="variant-pick__sku">（{variant.sku}）</span>
-                </span>
+                <span className="variant-pick__name">{variant.name}</span>
                 <span className="variant-pick__meta">
-                  <span className="variant-pick__price">
+                  <span className="variant-pick__price tnum">
                     {formatPrice(variant.price)}
                   </span>
-                  <span className="variant-pick__availability">
-                    {variant.isPurchasable ? "In stock" : "Out of stock"}
+                  <span
+                    className={`variant-pick__availability ${
+                      variant.isPurchasable ? "is-in" : "is-out"
+                    }`}
+                  >
+                    {variant.isPurchasable ? "有货" : "缺货"}
                   </span>
                 </span>
               </button>
@@ -104,42 +115,58 @@ export function AddToCartPanel({ productName, variants }: AddToCartPanelProps) {
       </fieldset>
 
       {!hasStock ? (
-        <p className="empty-state">No in-stock SKU available right now.</p>
-      ) : (
-        <div className="add-to-cart-panel__row">
-          <div className="cart-item-qty" aria-label="Quantity">
+        <p className="empty-state">目前没有可售规格。</p>
+      ) : selected ? (
+        <>
+          <p
+            className={`buy-box__stock ${
+              selected.isPurchasable ? "is-in" : "is-out"
+            }`}
+          >
+            {selected.isPurchasable ? "现货有货，可加入购物车" : "当前规格缺货"}
+          </p>
+          <p className="buy-box__sku">
+            规格编号：<span className="mono">{selected.sku}</span>
+          </p>
+
+          <div className="buy-box__actions">
+            <div className="buy-box__qty">
+              <span className="buy-box__label">数量</span>
+              <div className="cart-item-qty" aria-label="数量">
+                <button
+                  type="button"
+                  className="qty-btn"
+                  aria-label="减少数量"
+                  disabled={busy || qty <= 1}
+                  onClick={() => setQty((n) => Math.max(1, n - 1))}
+                >
+                  −
+                </button>
+                <span className="qty-value tnum" aria-live="polite">
+                  {qty}
+                </span>
+                <button
+                  type="button"
+                  className="qty-btn"
+                  aria-label="增加数量"
+                  disabled={busy}
+                  onClick={() => setQty((n) => n + 1)}
+                >
+                  +
+                </button>
+              </div>
+            </div>
             <button
               type="button"
-              className="qty-btn"
-              aria-label="Decrease"
-              disabled={busy || qty <= 1}
-              onClick={() => setQty((n) => Math.max(1, n - 1))}
-            >
-              −
-            </button>
-            <span className="qty-value" aria-live="polite">
-              {qty}
-            </span>
-            <button
-              type="button"
-              className="qty-btn"
-              aria-label="Increase"
+              className="btn-primary add-cart-btn buy-box__cta"
               disabled={busy}
-              onClick={() => setQty((n) => n + 1)}
+              onClick={handleAdd}
             >
-              +
+              {busy ? "正在加入…" : "加入购物车"}
             </button>
           </div>
-          <button
-            type="button"
-            className="btn-primary add-cart-btn"
-            disabled={busy}
-            onClick={handleAdd}
-          >
-            {busy ? "Adding…" : "Add to cart"}
-          </button>
-        </div>
-      )}
+        </>
+      ) : null}
 
       {error ? (
         <p className="form-error" role="alert">
@@ -147,12 +174,12 @@ export function AddToCartPanel({ productName, variants }: AddToCartPanelProps) {
         </p>
       ) : added && selected ? (
         <div className="add-success" role="status">
-          <p className="add-success__title">🛒 Added to cart</p>
+          <p className="add-success__title">🛒 已加入购物车</p>
           <p className="add-success__detail">
-            {productName} · {selected.name} added to cart.
+            已将「{productName} · {selected.name}」加入购物车。
           </p>
           <Link href="/cart" className="btn-primary add-success__cta">
-            🛒 View cart &amp; checkout
+            🛒 查看购物车并结算
           </Link>
         </div>
       ) : null}
